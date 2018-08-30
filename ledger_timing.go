@@ -42,7 +42,6 @@
 package consensus
 
 import (
-	"errors"
 	"time"
 )
 
@@ -98,10 +97,10 @@ const (
 func getNextLedgerTimeResolution(
 	previousResolution time.Duration,
 	previousAgree bool,
-	ledgerSeq Seq) (time.Duration, error) {
+	ledgerSeq Seq) time.Duration {
 
 	if ledgerSeq == 0 {
-		return 0, errors.New("invalid ledger")
+		panic("invalid ledger")
 	}
 
 	// Find the current resolution:
@@ -112,7 +111,7 @@ func getNextLedgerTimeResolution(
 		}
 	}
 	if iter == len(ledgerPossibleTimeResolutions) {
-		return 0, errors.New("invalid resolution")
+		panic("invalid resolution")
 	}
 
 	// If we did not previously agree, we try to decrease the resolution to
@@ -120,7 +119,7 @@ func getNextLedgerTimeResolution(
 	if !previousAgree &&
 		ledgerSeq%decreaseLedgerTimeResolutionEvery == 0 {
 		if iter++; iter != len(ledgerPossibleTimeResolutions) {
-			return ledgerPossibleTimeResolutions[iter], nil
+			return ledgerPossibleTimeResolutions[iter]
 		}
 	}
 
@@ -129,10 +128,10 @@ func getNextLedgerTimeResolution(
 	if previousAgree &&
 		ledgerSeq%increaseLedgerTimeResolutionEvery == 0 {
 		if iter--; iter >= 0 {
-			return ledgerPossibleTimeResolutions[iter], nil
+			return ledgerPossibleTimeResolutions[iter]
 		}
 	}
-	return previousResolution, nil
+	return previousResolution
 }
 
 /** Calculates the close time for a ledger, given a close time resolution.

@@ -45,6 +45,8 @@ import "time"
 
 var zeroID [32]byte
 
+type unixTime int64
+
 //NodeID is a id for a node.
 type NodeID [32]byte
 
@@ -59,9 +61,6 @@ type LedgerID [32]byte
 
 //Seq is a sequence no.
 type Seq uint64
-
-//NodeKey is a sining key of a validator.
-type NodeKey string
 
 // A single transaction
 type txT interface {
@@ -87,9 +86,9 @@ type ledger interface {
 	// Unique identifier of ledgerr
 	ID() LedgerID
 	Seq() Seq
-	closeTimeResolution() time.Duration
-	closeAgree() bool
-	closeTime() time.Time
+	CloseTimeResolution() time.Duration
+	CloseAgree() bool
+	CloseTime() time.Time
 	ParentCloseTime() time.Time
 	IndexOf(Seq) LedgerID
 	MakeGenesis() ledger
@@ -136,66 +135,60 @@ type adaptor interface {
 
 	// Called when ledger was forcibly accepted by consensus via the simulate
 	// function.
-	onForceAccept(*consensusResult, ledger, time.Duration, *consensusCloseTimes, consensusMode)
+	OnForceAccept(*consensusResult, ledger, time.Duration, *consensusCloseTimes, consensusMode)
 
 	// Propose the position to peers.
-	propose(consensusProposal)
+	Propose(consensusProposal)
 
 	// Share a received peer proposal with other peer's.
-	sharePositoin(peerPosition)
+	SharePositoin(peerPosition)
 
 	// Share a disputed transaction with peers
-	shareTx(txT)
+	ShareTx(txT)
 
 	// Share given transaction set with peers
-	shareTxset(txSet)
+	ShareTxset(txSet)
 
 	// Handle a newly stale validation, this should do minimal work since
 	// it is called by Validations while it may be iterating Validations
 	// under lock
-	onStale(validation)
+	OnStale(validation)
 
 	// Flush the remaining validations (typically done on shutdown)
-	flush(remaining map[NodeID]validation)
+	Flush(remaining map[NodeID]validation)
 
 	// Return the current network time (used to determine staleness)
-	now() time.Time
+	Now() time.Time
 
-	// Attempt to acquire a specific ledger.
-	acquire(LedgerID) ledger
+	// Attempt to Acquire a specific ledger.
+	Acquire(LedgerID) ledger
 }
 
 type validation interface {
 	// Ledger ID associated with this validation
-	ledgerID() LedgerID
+	LedgerID() LedgerID
 
 	// Sequence number of validation's ledger (0 means no sequence number)
-	seq() Seq
+	Seq() Seq
 
 	// When the validation was signed
-	signTime() time.Time
+	SignTime() time.Time
 
 	// When the validation was first observed by this node
-	seenTime() time.Time
+	SeenTime() time.Time
 
-	// Signing key of node that published the validation
-	key() NodeKey
-
-	// Whether the publishing node was trusted at the time the validation
+	// Whether the publishing node was Trusted at the time the validation
 	// arrived
-	trusted() bool
+	Trusted() bool
 
 	// Set the validation as trusted
-	setTrusted()
+	SetTrusted()
 
 	// Set the validation as untrusted
-	setUntrusted()
+	SetUntrusted()
 
-	// Whether this is a full or partial validation
-	full() bool
+	// Whether this is a Full or partial validation
+	Full() bool
 
-	// Identifier for this node that remains fixed even when rotating signing
-	// keys
-	nodeID() NodeID
-	loadFee() uint32
+	LoadFee() uint32
 }

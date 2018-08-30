@@ -42,7 +42,6 @@
 package consensus
 
 import (
-	"errors"
 	"time"
 )
 
@@ -176,10 +175,16 @@ func (ct consensusTimer) tickTime(tp time.Time) {
 */
 type consensusCloseTimes struct {
 	//! Close time estimates, keep ordered for predictable traverse
-	peers map[time.Time]int
+	peers map[unixTime]int
 
 	//! Our close time estimate
 	self time.Time
+}
+
+func newConsensusCloseTimes() *consensusCloseTimes {
+	return &consensusCloseTimes{
+		peers: make(map[unixTime]int),
+	}
 }
 
 /** Whether we have or don't have a consensus */
@@ -223,14 +228,16 @@ type consensusResult struct {
 	proposers uint
 }
 
-func newConsensusResult(txns txSet, pos consensusProposal) (*consensusResult, error) {
+func newConsensusResult(txns txSet, pos consensusProposal) *consensusResult {
 	if txns.ID() != pos.position {
-		return nil, errors.New("invalid txSet and proposal")
+		panic("invalid txSet and proposal")
 	}
 	return &consensusResult{
 		txns:     txns,
 		position: pos,
 		state:    no,
-	}, nil
+		disputes: make(map[TxID]*disputedTx),
+		compares: make(map[TxSetID]txSet),
+	}
 
 }

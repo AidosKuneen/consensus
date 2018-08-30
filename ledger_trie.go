@@ -67,29 +67,29 @@ type spanTip struct {
   @note s must be less than or equal to the sequence number of the
         tip ledger
 */
-func (st *spanTip) ancestor(s Seq) (LedgerID, error) {
+func (st *spanTip) ancestor(s Seq) LedgerID {
 	if s > st.seq {
-		return zeroID, errors.New("invalid sequence")
+		panic("invalid sequence")
 	}
-	return st.ledger.IndexOf(s), nil
+	return st.ledger.IndexOf(s)
 }
 
 type span struct {
 	start  Seq
-	End    Seq
+	end    Seq
 	ledger ledger
 }
 
 func newSpan(l ledger) *span {
 	return &span{
 		ledger: l,
-		End:    l.Seq() + 1,
+		end:    l.Seq() + 1,
 	}
 }
 
 //From Return the Span from [spot,end_) or none if no such valid span
 func (s *span) From(spot Seq) (*span, error) {
-	return s.sub(spot, s.End)
+	return s.sub(spot, s.end)
 }
 
 // Before Return the Span from [start_,spot) or none if no such valid span
@@ -121,8 +121,8 @@ func (s *span) Diff(o ledger) Seq {
 //  The tip of this span
 func (s *span) tip() *spanTip {
 	return &spanTip{
-		seq:    s.End - 1,
-		id:     s.ledger.IndexOf(s.End - 1),
+		seq:    s.end - 1,
+		id:     s.ledger.IndexOf(s.end - 1),
 		ledger: s.ledger,
 	}
 }
@@ -132,8 +132,8 @@ func (s *span) clamp(val Seq) Seq {
 	if tmp < val {
 		tmp = val
 	}
-	if tmp > s.End {
-		tmp = s.End
+	if tmp > s.end {
+		tmp = s.end
 	}
 	return tmp
 }
@@ -145,14 +145,14 @@ func (s *span) sub(from, to Seq) (*span, error) {
 	if newFrom < newTo {
 		return &span{
 			start:  newFrom,
-			End:    newTo,
+			end:    newTo,
 			ledger: s.ledger,
 		}, nil
 	}
 	return nil, errors.New("invalid from or to")
 }
 func (s *span) String() string {
-	return fmt.Sprint(s.tip(), "[", s.start, ",", s.End, ")")
+	return fmt.Sprint(s.tip(), "[", s.start, ",", s.end, ")")
 }
 
 // Return combined span, using ledger_ from higher sequence span
@@ -161,39 +161,39 @@ func merge(a, b *span) *span {
 	if start > b.start {
 		start = b.start
 	}
-	if a.End < b.End {
+	if a.end < b.end {
 		return &span{
 			start:  start,
-			End:    b.End,
+			end:    b.end,
 			ledger: b.ledger,
 		}
 	}
 	return &span{
 		start:  start,
-		End:    a.End,
+		end:    a.end,
 		ledger: a.ledger,
 	}
 }
 
 // A node in the trie
 type node struct {
-	Span          *span
-	TipSupport    uint32
-	BranchSupport uint32
-	Children      []*node
-	Parent        *node
+	span          *span
+	tipSupport    uint32
+	branchSupport uint32
+	children      []*node
+	parent        *node
 }
 
 func newNode(l ledger) *node {
 	return &node{
-		Span:          newSpan(l),
-		TipSupport:    1,
-		BranchSupport: 1,
+		span:          newSpan(l),
+		tipSupport:    1,
+		branchSupport: 1,
 	}
 }
 func newNode2(s *span) *node {
 	return &node{
-		Span: s,
+		span: s,
 	}
 }
 
@@ -203,19 +203,19 @@ func newNode2(s *span) *node {
   @note The child must be a member of the vector. The passed pointer
         will be dangling as a result of this call
 */
-func (n *node) erase(child *node) error {
-	for i, c := range n.Children {
+func (n *node) erase(child *node) {
+	for i, c := range n.children {
 		if child == c {
-			copy(n.Children[:i], n.Children[i+1:])
-			n.Children[i-1] = nil
-			return nil
+			copy(n.children[:i], n.children[i+1:])
+			n.children[i-1] = nil
+			return
 		}
 	}
-	return errors.New("child not found")
+	panic("child not found")
 }
 
 func (n *node) String() string {
-	return fmt.Sprint(n.Span.String(), "(T", n.TipSupport, ",B:", n.BranchSupport, ")")
+	return fmt.Sprint(n.span.String(), "(T", n.tipSupport, ",B:", n.branchSupport, ")")
 }
 
 /** Ancestry trie of ledgers
@@ -312,23 +312,23 @@ type ledgerTrie struct {
   @return Pair of the found node and the sequence number of the first
           ledger difference.
 */
-func (lt *ledgerTrie) find(l ledger) (*node, Seq, error) {
+func (lt *ledgerTrie) find(l ledger) (*node, Seq) {
 	curr := lt.root
 	// Root is always defined and is in common with all ledgers
 	if curr == nil {
-		return nil, 0, errors.New("root is nil")
+		panic("root is nil")
 	}
-	pos := curr.Span.Diff(l)
+	pos := curr.span.Diff(l)
 
 	done := false
 
 	// Continue searching for a better span as long as the current position
 	// matches the entire span
-	for !done && pos == curr.Span.End {
+	for !done && pos == curr.span.end {
 		done = true
 		// Find the child with the longest ancestry match
-		for _, child := range curr.Children {
-			childPos := child.Span.Diff(l)
+		for _, child := range curr.children {
+			childPos := child.span.Diff(l)
 			if childPos > pos {
 				done = false
 				pos = childPos
@@ -337,7 +337,7 @@ func (lt *ledgerTrie) find(l ledger) (*node, Seq, error) {
 			}
 		}
 	}
-	return curr, pos, nil
+	return curr, pos
 }
 
 func (lt *ledgerTrie) dumpImpl(curr *node, offset int) string {
@@ -350,7 +350,7 @@ func (lt *ledgerTrie) dumpImpl(curr *node, offset int) string {
 			str.WriteString("|-")
 		}
 		str.WriteString(curr.String())
-		for _, child := range curr.Children {
+		for _, child := range curr.children {
 			str.WriteString(lt.dumpImpl(child, offset+1+len(curr.String())+2))
 		}
 	}
@@ -359,7 +359,8 @@ func (lt *ledgerTrie) dumpImpl(curr *node, offset int) string {
 
 func newLedgerTrie() *ledgerTrie {
 	return &ledgerTrie{
-		root: &node{},
+		root:       &node{},
+		seqSupport: make(map[Seq]uint32),
 	}
 }
 
@@ -369,13 +370,10 @@ func newLedgerTrie() *ledgerTrie {
   @param count The count of support for this ledger
 */
 func (lt *ledgerTrie) insert(l ledger, count uint32) error {
-	loc, diffSeq, err := lt.find(l)
-	if err != nil {
-		return err
-	}
+	loc, diffSeq := lt.find(l)
 	// There is always a place to insert
 	if loc == nil {
-		return errors.New("ledger not found")
+		panic("ledger not found")
 	}
 
 	// Node from which to start incrementing branchSupport
@@ -393,11 +391,11 @@ func (lt *ledgerTrie) insert(l ledger, count uint32) error {
 	//  a b c  | g h i
 	//  prefix | newSuffix
 
-	prefix, err := loc.Span.Before(diffSeq)
+	prefix, err := loc.span.Before(diffSeq)
 	if err != nil {
 		return err
 	}
-	oldSuffix, err := loc.Span.From(diffSeq)
+	oldSuffix, err := loc.span.From(diffSeq)
 	if err != nil {
 		return err
 	}
@@ -416,22 +414,22 @@ func (lt *ledgerTrie) insert(l ledger, count uint32) error {
 
 		// Create oldSuffix node that takes over loc
 		nNode := newNode2(oldSuffix)
-		nNode.TipSupport = loc.TipSupport
-		nNode.BranchSupport = loc.BranchSupport
-		copy(nNode.Children, loc.Children)
-		loc.Children = nil
-		for _, child := range nNode.Children {
-			child.Parent = nNode
+		nNode.tipSupport = loc.tipSupport
+		nNode.branchSupport = loc.branchSupport
+		copy(nNode.children, loc.children)
+		loc.children = nil
+		for _, child := range nNode.children {
+			child.parent = nNode
 		}
 
 		// Loc truncates to prefix and newNode is its child
 		if prefix == nil {
-			return errors.New("prefix is null")
+			panic("prefix is null")
 		}
-		loc.Span = prefix
-		nNode.Parent = loc
-		loc.Children = append(loc.Children, nNode)
-		loc.TipSupport = 0
+		loc.span = prefix
+		nNode.parent = loc
+		loc.children = append(loc.children, nNode)
+		loc.tipSupport = 0
 	}
 	if newSuffix != nil {
 		// Have
@@ -443,16 +441,16 @@ func (lt *ledgerTrie) insert(l ledger, count uint32) error {
 		//     \. def
 
 		nNode := newNode2(newSuffix)
-		nNode.Parent = loc
+		nNode.parent = loc
 		// increment support starting from the new node
 		incNode = nNode
-		loc.Children = append(loc.Children, nNode)
+		loc.children = append(loc.children, nNode)
 	}
 
-	incNode.TipSupport += count
+	incNode.tipSupport += count
 	for incNode != nil {
-		incNode.BranchSupport += count
-		incNode = incNode.Parent
+		incNode.branchSupport += count
+		incNode = incNode.parent
 	}
 
 	lt.seqSupport[l.Seq()] += count
@@ -466,25 +464,22 @@ func (lt *ledgerTrie) insert(l ledger, count uint32) error {
 
   @return Whether a matching node was decremented and possibly removed.
 */
-func (lt *ledgerTrie) remove(l ledger, count uint32) (bool, error) {
-	loc, diffSeq, err := lt.find(l)
-	if err != nil {
-		return false, err
-	}
+func (lt *ledgerTrie) remove(l ledger, count uint32) bool {
+	loc, diffSeq := lt.find(l)
 
 	// Cannot erase root
 	if loc != nil && loc != lt.root {
 		// Must be exact match with tip support
-		if diffSeq == loc.Span.End && diffSeq > l.Seq() &&
-			loc.TipSupport > 0 {
-			if count > loc.TipSupport {
-				count = loc.TipSupport
+		if diffSeq == loc.span.end && diffSeq > l.Seq() &&
+			loc.tipSupport > 0 {
+			if count > loc.tipSupport {
+				count = loc.tipSupport
 			}
-			loc.TipSupport -= count
+			loc.tipSupport -= count
 
 			it, exist := lt.seqSupport[l.Seq()]
 			if !exist {
-				return false, errors.New("ledger not found")
+				panic("ledger not found")
 			}
 			it -= count
 			if it == 0 {
@@ -492,31 +487,31 @@ func (lt *ledgerTrie) remove(l ledger, count uint32) (bool, error) {
 			}
 			decNode := loc
 			for decNode != nil {
-				decNode.BranchSupport -= count
-				decNode = decNode.Parent
+				decNode.branchSupport -= count
+				decNode = decNode.parent
 			}
 
-			for loc.TipSupport == 0 && loc != lt.root {
-				parent := loc.Parent
-				if len(loc.Children) == 0 {
+			for loc.tipSupport == 0 && loc != lt.root {
+				parent := loc.parent
+				if len(loc.children) == 0 {
 					// this node can be erased
 					parent.erase(loc)
-				} else if len(loc.Children) == 1 {
+				} else if len(loc.children) == 1 {
 					// This node can be combined with its child
-					child := loc.Children[0]
-					child.Span = merge(loc.Span, child.Span)
-					child.Parent = parent
-					parent.Children = append(parent.Children, child)
+					child := loc.children[0]
+					child.span = merge(loc.span, child.span)
+					child.parent = parent
+					parent.children = append(parent.children, child)
 					parent.erase(loc)
 				} else {
 					break
 				}
 				loc = parent
 			}
-			return false, nil
+			return false
 		}
 	}
-	return false, nil
+	return false
 }
 
 /** Return count of tip support for the specific ledger.
@@ -524,17 +519,14 @@ func (lt *ledgerTrie) remove(l ledger, count uint32) (bool, error) {
   @param ledger The ledger to lookup
   @return The number of entries in the trie for this *exact* ledger
 */
-func (lt *ledgerTrie) tipSupport(l ledger) (uint32, error) {
-	loc, diffSeq, err := lt.find(l)
-	if err != nil {
-		return 0, err
-	}
+func (lt *ledgerTrie) tipSupport(l ledger) uint32 {
+	loc, diffSeq := lt.find(l)
 
 	// Exact match
-	if loc != nil && diffSeq == loc.Span.End && diffSeq > l.Seq() {
-		return loc.TipSupport, nil
+	if loc != nil && diffSeq == loc.span.end && diffSeq > l.Seq() {
+		return loc.tipSupport
 	}
-	return 0, nil
+	return 0
 }
 
 /** Return the count of branch support for the specific ledger
@@ -542,19 +534,16 @@ func (lt *ledgerTrie) tipSupport(l ledger) (uint32, error) {
 @param ledger The ledger to lookup
 @return The number of entries in the trie for this ledger or a descendant
 */
-func (lt *ledgerTrie) branchSupport(l ledger) (uint32, error) {
-	loc, diffSeq, err := lt.find(l)
-	if err != nil {
-		return 0, err
-	}
+func (lt *ledgerTrie) branchSupport(l ledger) uint32 {
+	loc, diffSeq := lt.find(l)
 
 	// Check that ledger is is an exact match or proper
 	// prefix of loc
 	if loc != nil && diffSeq > l.Seq() &&
-		l.Seq() < loc.Span.End {
-		return loc.BranchSupport, nil
+		l.Seq() < loc.span.end {
+		return loc.branchSupport
 	}
-	return 0, nil
+	return 0
 }
 func (lt *ledgerTrie) keys() []Seq {
 	keys := make([]Seq, 0, len(lt.seqSupport))
@@ -639,7 +628,7 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) (*spanTip, error) {
 		{
 			// Add any initial uncommitted support prior for ledgers
 			// earlier than nextSeq or earlier than largestIssued
-			nextSeq := curr.Span.start + 1
+			nextSeq := curr.span.start + 1
 			seq := nextSeq
 			if seq < largestIssued {
 				seq = largestIssued
@@ -650,22 +639,22 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) (*spanTip, error) {
 			}
 
 			// Advance nextSeq along the span
-			for nextSeq < curr.Span.End &&
-				curr.BranchSupport > uncommited {
+			for nextSeq < curr.span.end &&
+				curr.branchSupport > uncommited {
 				// Jump to the next seqSupport change
 				if it != len(uncommittedIt) &&
-					uncommittedIt[it] < curr.Span.End {
+					uncommittedIt[it] < curr.span.end {
 					nextSeq = uncommittedIt[it] + 1
 					uncommited += lt.seqSupport[uncommittedIt[it]]
 					it++
 				} else { // otherwise we jump to the end of the span
-					nextSeq = curr.Span.End
+					nextSeq = curr.span.end
 				}
 			}
 			// We did not consume the entire span, so we have found the
 			// preferred ledger
-			if nextSeq < curr.Span.End {
-				sp, err := curr.Span.Before(nextSeq)
+			if nextSeq < curr.span.end {
+				sp, err := curr.span.Before(nextSeq)
 				if err != nil {
 					return nil, err
 				}
@@ -677,30 +666,30 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) (*spanTip, error) {
 		// find the best child
 		var best *node
 		var margin uint32
-		if len(curr.Children) == 1 {
-			best = curr.Children[0]
-			margin = best.BranchSupport
-		} else if len(curr.Children) != 0 {
+		if len(curr.children) == 1 {
+			best = curr.children[0]
+			margin = best.branchSupport
+		} else if len(curr.children) != 0 {
 			// Sort placing children with largest branch support in the
 			// front, breaking ties with the span's starting ID
-			sort.Slice(curr.Children, func(i, j int) bool {
-				b := curr.Children[i].BranchSupport - curr.Children[j].BranchSupport
+			sort.Slice(curr.children, func(i, j int) bool {
+				b := curr.children[i].branchSupport - curr.children[j].branchSupport
 				if b != 0 {
 					return b > 0
 				}
-				idi := curr.Children[i].Span.startID()
-				idj := curr.Children[j].Span.startID()
+				idi := curr.children[i].span.startID()
+				idj := curr.children[j].span.startID()
 				return bytes.Compare(idi[:], idj[:]) > 0
 			})
-			best = curr.Children[0]
-			margin = curr.Children[0].BranchSupport -
-				curr.Children[1].BranchSupport
+			best = curr.children[0]
+			margin = curr.children[0].branchSupport -
+				curr.children[1].branchSupport
 
 			// If best holds the tie-breaker, gets one larger margin
 			// since the second best needs additional branchSupport
 			// to overcome the tie
-			idi := best.Span.startID()
-			idj := curr.Children[1].Span.startID()
+			idi := best.span.startID()
+			idj := curr.children[1].span.startID()
 			if bytes.Compare(idi[:], idj[:]) > 0 {
 				margin++
 			}
@@ -714,7 +703,7 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) (*spanTip, error) {
 			done = true
 		}
 	}
-	return curr.Span.tip(), nil
+	return curr.span.tip(), nil
 }
 
 /** Dump an ascii representation of the trie to the stream*/
@@ -738,24 +727,24 @@ func (lt *ledgerTrie) checkInvariants() bool {
 		}
 		// Node with 0 tip support must have multiple children
 		// unless it is the root node
-		if curr != lt.root && curr.TipSupport == 0 &&
-			len(curr.Children) < 2 {
+		if curr != lt.root && curr.tipSupport == 0 &&
+			len(curr.children) < 2 {
 			return false
 		}
 		// branchSupport = tipSupport + sum(child.branchSupport)
-		support := curr.TipSupport
-		if curr.TipSupport != 0 {
-			expectedSeqSupport[curr.Span.End-1] += curr.TipSupport
+		support := curr.tipSupport
+		if curr.tipSupport != 0 {
+			expectedSeqSupport[curr.span.end-1] += curr.tipSupport
 		}
 
-		for _, child := range curr.Children {
-			if child.Parent != curr {
+		for _, child := range curr.children {
+			if child.parent != curr {
 				return false
 			}
-			support += child.BranchSupport
+			support += child.branchSupport
 			nodes = append(nodes, child)
 		}
-		if support != curr.BranchSupport {
+		if support != curr.branchSupport {
 			return false
 		}
 	}

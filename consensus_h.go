@@ -261,7 +261,7 @@ type consensus struct {
 	// How long has this round been open
 	openTime consensusTimer
 
-	closeResolution time.Duration
+	closeResolution time.Duration //= ledgerDefaultTimeResolution;
 
 	// Time it took for the last consensus round to converge
 	prevRoundTime time.Duration
@@ -286,7 +286,7 @@ type consensus struct {
 	acquired map[TxSetID]txSet
 
 	result        *consensusResult
-	rawCloseTimes *consensusCloseTimes //= ledgerDefaultTimeResolution;
+	rawCloseTimes *consensusCloseTimes
 
 	//-------------------------------------------------------------------------
 	// Peer related consensus data
@@ -318,9 +318,14 @@ func newConsensus(adaptor adaptor) *consensus {
 		mode: monitoredMode{
 			mode: observing,
 		},
-		firstRound:      true,
-		closeResolution: ledgerDefaultTimeResolution,
-		adaptor:         adaptor,
+		firstRound:          true,
+		closeResolution:     ledgerDefaultTimeResolution,
+		adaptor:             adaptor,
+		acquired:            make(map[TxSetID]txSet),
+		deadNodes:           make(map[NodeID]struct{}),
+		recentPeerPositions: make(map[NodeID][]peerPosition),
+		currPeerPositions:   make(map[NodeID]peerPosition),
+		rawCloseTimes:       newConsensusCloseTimes(),
 	}
 }
 
@@ -343,11 +348,11 @@ func (c *consensus) startRound(
 	prevLedgerID LedgerID,
 	prevLedger ledger,
 	nowUntrusted map[NodeID]struct{},
-	isProposing bool) error {
+	isProposing bool) {
 	if c.firstRound {
 		// take our initial view of closeTime_ from the seed ledger
 		c.prevRoundTime = ledgerIdleInterval
-		c.prevCloseTime = prevLedger.closeTime()
+		c.prevCloseTime = prevLedger.CloseTime()
 		c.firstRound = false
 	} else {
 		c.prevCloseTime = c.rawCloseTimes.self
@@ -365,9 +370,6 @@ func (c *consensus) startRound(
 		// try to acquire the correct one
 		newLedger, err := c.adaptor.AcquireLedger(prevLedgerID)
 		if err != nil {
-			return err
-		}
-		if newLedger != nil {
 			prevLedger = newLedger
 		} else { // Unable to acquire the correct ledger
 			startMode = wrongLedger
@@ -375,11 +377,11 @@ func (c *consensus) startRound(
 			log.Println("Correct LCL is: ", prevLedgerID)
 		}
 	}
-	return c.startRoundInternal(now, prevLedgerID, prevLedger, startMode)
+	c.startRoundInternal(now, prevLedgerID, prevLedger, startMode)
 }
 
 func (c *consensus) startRoundInternal(
-	now time.Time, prevLedgerID LedgerID, prevLedger ledger, mode consensusMode) error {
+	now time.Time, prevLedgerID LedgerID, prevLedger ledger, mode consensusMode) {
 	c.phase = open
 	c.mode.set(mode, c.adaptor)
 	c.now = now
@@ -391,25 +393,20 @@ func (c *consensus) startRoundInternal(
 	c.openTime.reset(time.Now())
 	c.currPeerPositions = make(map[NodeID]peerPosition)
 	c.acquired = make(map[TxSetID]txSet)
-	c.rawCloseTimes.peers = make(map[time.Time]int)
+	c.rawCloseTimes.peers = make(map[unixTime]int)
 	c.rawCloseTimes.self = time.Time{}
 	c.deadNodes = make(map[NodeID]struct{})
 
-	var err error
-	c.closeResolution, err = getNextLedgerTimeResolution(
-		c.previousLedger.closeTimeResolution(),
-		c.previousLedger.closeAgree(),
+	c.closeResolution = getNextLedgerTimeResolution(
+		c.previousLedger.CloseTimeResolution(),
+		c.previousLedger.CloseAgree(),
 		c.previousLedger.Seq()+1)
-	if err != nil {
-		return err
-	}
 	c.playbackProposals()
 	if uint(len(c.currPeerPositions)) > (c.prevProposers / 2) {
 		// We may be falling behind, don't wait for the timer
 		// consider closing the ledger immediately
 		c.timerEntry(c.now)
 	}
-	return nil
 }
 
 /** A peer has proposed a new position, adjust our tracking.
@@ -500,7 +497,7 @@ func (c *consensus) peerProposalInternal(
 		// Record the close time estimate
 		log.Println("Peer reports close time as ",
 			newPeerProp.closeTime.Unix())
-		c.rawCloseTimes.peers[newPeerProp.closeTime]++
+		c.rawCloseTimes.peers[unixTime(newPeerProp.closeTime.Unix())]++
 	}
 
 	log.Println("Processing peer proposal ", newPeerProp.proposeSeq,
@@ -625,7 +622,7 @@ func (c *consensus) simulate(
 	c.result.proposers = c.prevProposers
 	c.prevRoundTime = c.result.roundTime.read()
 	c.phase = accepted
-	c.adaptor.onForceAccept(
+	c.adaptor.OnForceAccept(
 		c.result,
 		c.previousLedger,
 		c.closeResolution,
@@ -655,7 +652,7 @@ func (c *consensus) handleWrongLedger(lgrID LedgerID) {
 		}
 
 		c.currPeerPositions = make(map[NodeID]peerPosition)
-		c.rawCloseTimes.peers = make(map[time.Time]int)
+		c.rawCloseTimes.peers = make(map[unixTime]int)
 		c.deadNodes = make(map[NodeID]struct{})
 
 		// Get back in sync, this will also recreate disputes
@@ -710,7 +707,7 @@ func (c *consensus) playbackProposals() {
 		for _, pos := range it {
 			if pos.Proposal().previousLedger == c.prevLedgerID {
 				if c.peerProposalInternal(c.now, pos) {
-					c.adaptor.sharePositoin(pos)
+					c.adaptor.SharePositoin(pos)
 				}
 			}
 		}
@@ -735,13 +732,13 @@ func (c *consensus) phaseOpen() {
 	var sinceClose time.Duration
 	previousCloseCorrect :=
 		(c.mode.mode != wrongLedger) &&
-			c.previousLedger.closeAgree() &&
-			(!c.previousLedger.closeTime().Equal(
+			c.previousLedger.CloseAgree() &&
+			(!c.previousLedger.CloseTime().Equal(
 				(c.previousLedger.ParentCloseTime().Add(1 * time.Second))))
 
 	lastCloseTime := c.prevCloseTime // use the time we saw internally
 	if previousCloseCorrect {
-		lastCloseTime = c.previousLedger.closeTime() // use consensus timing
+		lastCloseTime = c.previousLedger.CloseTime() // use consensus timing
 	}
 
 	if c.now.After(lastCloseTime) {
@@ -750,7 +747,7 @@ func (c *consensus) phaseOpen() {
 		sinceClose = -lastCloseTime.Sub(c.now)
 	}
 
-	idleInterval := 2 * c.previousLedger.closeTimeResolution()
+	idleInterval := 2 * c.previousLedger.CloseTimeResolution()
 	if idleInterval < ledgerIdleInterval {
 		idleInterval = ledgerIdleInterval
 	}
@@ -840,11 +837,11 @@ func (c *consensus) closeLedger() {
 	_, ok := c.acquired[c.result.txns.ID()]
 	c.acquired[c.result.txns.ID()] = c.result.txns
 	if !ok {
-		c.adaptor.shareTxset(c.result.txns)
+		c.adaptor.ShareTxset(c.result.txns)
 	}
 
 	if c.mode.mode == proposing {
-		c.adaptor.propose(c.result.position)
+		c.adaptor.Propose(c.result.position)
 	}
 
 	// Create disputes with any peer positions we have transactions for
@@ -888,7 +885,7 @@ func (c *consensus) updateOurPositions() {
 	ourCutoff := c.now.Add(-proposeINTERVAL)
 
 	// Verify freshness of peer positions and compute close times
-	closeTimeVotes := make(map[time.Time]int)
+	closeTimeVotes := make(map[unixTime]int)
 	{
 		for nid, pos := range c.currPeerPositions {
 			peerProp := pos.Proposal()
@@ -902,7 +899,7 @@ func (c *consensus) updateOurPositions() {
 				delete(c.currPeerPositions, nid)
 			} else {
 				// proposal is still fresh
-				closeTimeVotes[c.asCloseTime(peerProp.closeTime)]++
+				closeTimeVotes[unixTime(c.asCloseTime(peerProp.closeTime).Unix())]++
 			}
 		}
 	}
@@ -961,7 +958,7 @@ func (c *consensus) updateOurPositions() {
 		}
 		participants := len(c.currPeerPositions)
 		if c.mode.mode == proposing {
-			closeTimeVotes[c.asCloseTime(c.result.position.closeTime)]++
+			closeTimeVotes[unixTime(c.asCloseTime(c.result.position.closeTime).Unix())]++
 			participants++
 		}
 
@@ -985,7 +982,7 @@ func (c *consensus) updateOurPositions() {
 
 			if cnt >= threshVote {
 				// A close time has enough votes for us to try to agree
-				consensusCloseTime = tim
+				consensusCloseTime = time.Unix(int64(tim), 0)
 				threshVote = cnt
 
 				if threshVote >= threshConsensus {
@@ -1028,7 +1025,7 @@ func (c *consensus) updateOurPositions() {
 		c.acquired[newID] = c.result.txns
 		if !ok {
 			if !c.result.position.isBowOut() {
-				c.adaptor.shareTxset(c.result.txns)
+				c.adaptor.ShareTxset(c.result.txns)
 			}
 			for nid, pos := range c.currPeerPositions {
 				p := pos.Proposal()
@@ -1041,7 +1038,7 @@ func (c *consensus) updateOurPositions() {
 		// Share our new position if we are still participating this round
 		if !c.result.position.isBowOut() &&
 			(c.mode.mode == proposing) {
-			c.adaptor.propose(c.result.position)
+			c.adaptor.Propose(c.result.position)
 		}
 	}
 }
@@ -1104,7 +1101,7 @@ func (c *consensus) leaveConsensus() {
 	if c.mode.mode == proposing {
 		if c.result != nil && !c.result.position.isBowOut() {
 			c.result.position.bowOut(c.now)
-			c.adaptor.propose(c.result.position)
+			c.adaptor.Propose(c.result.position)
 		}
 
 		c.mode.set(observing, c.adaptor)
@@ -1170,7 +1167,7 @@ func (c *consensus) createDisputes(o txSet) {
 				dtx.setVote(nid, cit.Exists(txID))
 			}
 		}
-		c.adaptor.shareTx(dtx.tx)
+		c.adaptor.ShareTx(dtx.tx)
 
 		c.result.disputes[txID] = dtx
 	}
@@ -1199,5 +1196,5 @@ func (c *consensus) asCloseTime(raw time.Time) time.Time {
 	if useRoundedCloseTime {
 		return roundCloseTime(raw, c.closeResolution)
 	}
-	return effCloseTime(raw, c.closeResolution, c.previousLedger.closeTime())
+	return effCloseTime(raw, c.closeResolution, c.previousLedger.CloseTime())
 }

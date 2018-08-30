@@ -50,6 +50,18 @@ type nodeVal struct {
 	touched time.Time
 }
 
+func (a agedMap) add(lid LedgerID, nid NodeID, v validation) {
+	if m, ok := a[lid]; ok {
+		m.m[nid] = v
+		return
+	}
+	a[lid] = &nodeVal{
+		m:       make(map[NodeID]validation),
+		touched: time.Now(),
+	}
+	a[lid].m[nid] = v
+}
+
 func (a agedMap) expire(expire time.Duration) {
 	for k, nv := range a {
 		if nv.touched.Add(expire).After(time.Now()) {
