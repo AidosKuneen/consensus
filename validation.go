@@ -579,6 +579,7 @@ func (v *validations) trustChanged(added, removed map[NodeID]struct{}) {
   A ledger is preferred if it has more support amongst trusted validators
   and is *not* an ancestor of the current working ledger; otherwise it
   remains the current working ledger.
+  (Parent of preferred stays put)
 
   @param curr The local node's current working ledger
 
@@ -586,7 +587,7 @@ func (v *validations) trustChanged(added, removed map[NodeID]struct{}) {
           or Seq{0},ID{0} if no trusted validations are available to
           determine the preferred ledger.
 */
-func (v *validations) getPreferred(curr ledger) (Seq, LedgerID, error) {
+func (v *validations) getPreferred(curr ledger) (Seq, LedgerID) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	var preferred *spanTip
@@ -611,30 +612,30 @@ func (v *validations) getPreferred(curr ledger) (Seq, LedgerID, error) {
 			}
 		}
 		if len(v.acquiring) != 0 {
-			return maxseq, maxid, nil
+			return maxseq, maxid
 		}
-		return preferred.seq, preferred.id, nil
+		return preferred.seq, preferred.id
 	}
 
 	// If we are the parent of the preferred ledger, stick with our
 	// current ledger since we might be about to generate it
-	lid := preferred.ancestor(curr.Seq())
-	if preferred.seq == curr.Seq()+1 && lid == curr.ID() {
-		return curr.Seq(), curr.ID(), nil
+	if preferred.seq == curr.Seq()+1 &&
+		preferred.ancestor(curr.Seq()) == curr.ID() {
+		return curr.Seq(), curr.ID()
 	}
 
 	// A ledger ahead of us is preferred regardless of whether it is
 	// a descendant of our working ledger or it is on a different chain
 	if preferred.seq > curr.Seq() {
-		return preferred.seq, preferred.id, nil
+		return preferred.seq, preferred.id
 	}
 	// Only switch to earlier or same sequence number
 	// if it is a different chain.
 	if curr.IndexOf(preferred.seq) != preferred.id {
-		return preferred.seq, preferred.id, nil
+		return preferred.seq, preferred.id
 	}
 	// Stick with current ledger
-	return curr.Seq(), curr.ID(), nil
+	return curr.Seq(), curr.ID()
 }
 
 /** Get the ID of the preferred working ledger that exceeds a minimum valid
@@ -647,15 +648,12 @@ func (v *validations) getPreferred(curr ledger) (Seq, LedgerID, error) {
              is not valid
 */
 
-func (v *validations) getPreferred2(curr ledger, minValidSeq Seq) (LedgerID, error) {
-	preferredSeq, preferredID, err := v.getPreferred(curr)
-	if err != nil {
-		return zeroID, err
-	}
+func (v *validations) getPreferred2(curr ledger, minValidSeq Seq) LedgerID {
+	preferredSeq, preferredID := v.getPreferred(curr)
 	if preferredSeq >= minValidSeq && preferredID != zeroID {
-		return preferredID, nil
+		return preferredID
 	}
-	return curr.ID(), nil
+	return curr.ID()
 }
 
 /** Determine the preferred last closed ledger for the next consensus round.
@@ -673,17 +671,14 @@ func (v *validations) getPreferred2(curr ledger, minValidSeq Seq) (LedgerID, err
   @note The minSeq does not apply to the peerCounts, since this function
         does not know their sequence number
 */
-func (v *validations) getPreferredLCL(lcl ledger, minSeq Seq, peerCounts map[LedgerID]uint32) (LedgerID, error) {
-	preferredSeq, preferredID, err := v.getPreferred(lcl)
-	if err != nil {
-		return zeroID, err
-	}
+func (v *validations) getPreferredLCL(lcl ledger, minSeq Seq, peerCounts map[LedgerID]uint32) LedgerID {
+	preferredSeq, preferredID := v.getPreferred(lcl)
 	// Trusted validations exist
-	if preferredID != zeroID && preferredSeq > 0 {
-		if preferredSeq > minSeq {
-			return preferredID, nil
+	if preferredID != genesisID && preferredSeq > 0 {
+		if preferredSeq >= minSeq {
+			return preferredID
 		}
-		return lcl.ID(), nil
+		return lcl.ID()
 	}
 	// Otherwise, rely on peer ledgers
 
@@ -698,9 +693,9 @@ func (v *validations) getPreferredLCL(lcl ledger, minSeq Seq, peerCounts map[Led
 		}
 	}
 	if len(peerCounts) > 0 {
-		return maxid, nil
+		return maxid
 	}
-	return lcl.ID(), nil
+	return lcl.ID()
 }
 
 /** Count the number of current trusted validators working on a ledger

@@ -42,7 +42,6 @@
 package consensus
 
 import (
-	"encoding/binary"
 	"time"
 )
 
@@ -99,7 +98,7 @@ func newLedger(path string) *tledger {
 			l = ll
 		} else {
 			var id [32]byte
-			binary.LittleEndian.PutUint64(id[:], uint64(len(ledgers)))
+			id[0] = byte(i + 1)
 			l = &tledger{
 				id:   id,
 				seq:  Seq(i + 1),

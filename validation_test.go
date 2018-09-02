@@ -50,9 +50,9 @@ import (
 	"time"
 )
 
-func toNetClock() time.Time {
-	return time.Now().Add(86400 * time.Second)
-}
+// func toNetClock() time.Time {
+// 	return time.Now().Add(86400 * time.Second)
+// }
 
 type nodeT struct {
 	nodeID  [32]byte
@@ -86,8 +86,8 @@ func (n *nodeT) validate(id LedgerID, seq Seq, signOffset, seenOffset time.Durat
 	return &validationT{
 		id:       id,
 		seq:      seq,
-		signTime: toNetClock().Add(signOffset),
-		seenTime: toNetClock().Add(seenOffset),
+		signTime: time.Now().Add(signOffset),
+		seenTime: time.Now().Add(seenOffset),
 		key:      n.currKey(),
 		nodeID:   n.nodeID,
 		full:     full,
@@ -324,10 +324,7 @@ func TestOnStale(t *testing.T) {
 		if harness.vals.getNodesAfter(a, a.ID()) != 1 {
 			t.Fatal("invalid getnodesafetr", i)
 		}
-		s, id, err := harness.vals.getPreferred(genesisLedger)
-		if err != nil {
-			t.Error(err)
-		}
+		s, id := harness.vals.getPreferred(genesisLedger)
 		if s != ab.Seq() || id != ab.ID() {
 			t.Error("invalid getPreferred")
 		}
@@ -347,10 +344,7 @@ func TestOnStale(t *testing.T) {
 		if harness.vals.getNodesAfter(a, a.ID()) != 0 {
 			t.Error("invalid getnodeafter")
 		}
-		s, id, err = harness.vals.getPreferred(genesisLedger)
-		if err != nil {
-			t.Error(err)
-		}
+		s, id = harness.vals.getPreferred(genesisLedger)
 		if s != 0 || id != genesisID {
 			t.Error("invalid getPreferred", s, id)
 		}
@@ -625,4 +619,448 @@ func TestExpire(t *testing.T) {
 		t.Error("invalid")
 	}
 	validationSetExpires = e
+}
+func TestFlush(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+
+	harness := newTestHarness()
+	na := harness.makeNode()
+	nb := harness.makeNode()
+	nc := harness.makeNode()
+	nc.trusted = false
+	a := newLedger("a")
+	ab := newLedger("ab")
+
+	exp := make(map[NodeID]*validationT)
+
+	for _, n := range []*nodeT{na, nb, nc} {
+		v := n.validate3(a)
+		if harness.add(v) != current {
+			t.Error("invalid")
+		}
+		exp[n.nodeID] = v
+	}
+	staleA := exp[na.nodeID]
+	// Send in a new validation for a, saving the new one into the expected
+	// map after setting the proper prior ledger ID it replaced
+	time.Sleep(time.Second)
+	v := na.validate3(ab)
+	if harness.add(v) != current {
+		t.Error("invalid")
+	}
+	exp[na.nodeID] = v
+	harness.vals.flush()
+	if len(harness.staledata.stale) != 1 {
+		t.Error("invalid")
+	}
+	if harness.staledata.stale[0] != staleA {
+		t.Error("invalid")
+	}
+	vv := harness.staledata.stale[0].(*validationT)
+	if vv.nodeID != na.nodeID {
+		t.Error("invalid")
+	}
+	for k, v := range harness.staledata.flushed {
+		if exp[k] != v {
+			t.Error("invalid")
+		}
+	}
+	if len(harness.staledata.flushed) != len(exp) {
+		t.Error("invalid")
+	}
+}
+
+func TestGetPreferredLedger(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+
+	harness := newTestHarness()
+	na := harness.makeNode()
+	nb := harness.makeNode()
+	nc := harness.makeNode()
+	nd := harness.makeNode()
+	nc.trusted = false
+	a := newLedger("a")
+	b := newLedger("b")
+	ac := newLedger("ac")
+	acd := newLedger("acd")
+
+	s, lid := harness.vals.getPreferred(a)
+	if lid != genesisID || s != 0 {
+		t.Error("invalid")
+	}
+	if harness.add(na.validate3(b)) != current {
+		t.Error("invalid")
+	}
+	s, lid = harness.vals.getPreferred(a)
+	if lid != b.ID() || s != b.seq {
+		t.Error("invalid")
+	}
+	s, lid = harness.vals.getPreferred(b)
+	if lid != b.ID() || s != b.seq {
+		t.Error("invalid")
+	}
+	lid = harness.vals.getPreferred2(a, 10)
+	if lid != a.ID() {
+		t.Error("invalid")
+	}
+
+	if harness.add(nb.validate3(a)) != current {
+		t.Error("invalid")
+	}
+	if harness.add(nc.validate3(a)) != current {
+		t.Error("invalid")
+	}
+	if bytes.Compare(b.id[:], a.id[:]) <= 0 {
+		t.Error("invalid")
+	}
+	s, lid = harness.vals.getPreferred(a)
+	if lid != b.ID() || s != b.seq {
+		t.Error("invalid")
+	}
+	s, lid = harness.vals.getPreferred(b)
+	if lid != b.ID() || s != b.seq {
+		t.Error("invalid")
+	}
+
+	if harness.add(nd.partial(a)) != current {
+		t.Error("invalid")
+	}
+	s, lid = harness.vals.getPreferred(a)
+	if lid != a.ID() || s != a.seq {
+		t.Error("invalid")
+	}
+	s, lid = harness.vals.getPreferred(b)
+	if lid != a.ID() || s != a.seq {
+		t.Error("invalid")
+	}
+
+	time.Sleep(5 * time.Second)
+
+	for _, n := range []*nodeT{na, nb, nc, nd} {
+		v := n.validate3(ac)
+		if harness.add(v) != current {
+			t.Error("invalid")
+		}
+	}
+	s, lid = harness.vals.getPreferred(a)
+	if lid != a.ID() || s != a.seq {
+		t.Error("invalid")
+	}
+	s, lid = harness.vals.getPreferred(b)
+	if lid != ac.ID() || s != ac.seq {
+		t.Error("invalid")
+	}
+	s, lid = harness.vals.getPreferred(acd)
+	if lid != acd.ID() || s != acd.seq {
+		t.Error("invalid")
+	}
+
+	time.Sleep(5 * time.Second)
+
+	for _, n := range []*nodeT{na, nb, nc, nd} {
+		v := n.validate3(acd)
+		if harness.add(v) != current {
+			t.Error("invalid")
+		}
+	}
+	for _, l := range []*tledger{a, b, acd} {
+		s, lid = harness.vals.getPreferred(l)
+		if lid != acd.ID() || s != acd.seq {
+			t.Error("invalid")
+		}
+	}
+
+}
+func TestGetPreferredLCL(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+
+	harness := newTestHarness()
+	na := harness.makeNode()
+	a := newLedger("a")
+	b := newLedger("b")
+	c := newLedger("c")
+
+	counts := make(map[LedgerID]uint32)
+
+	if harness.vals.getPreferredLCL(a, 0, counts) != a.id {
+		t.Error()
+	}
+	counts[b.id]++
+	if harness.vals.getPreferredLCL(a, 0, counts) != b.id {
+		t.Error()
+	}
+	counts[c.id]++
+	if bytes.Compare(c.id[:], b.id[:]) <= 0 {
+		t.Error()
+	}
+	if harness.vals.getPreferredLCL(a, 0, counts) != c.id {
+		t.Error()
+	}
+	counts[c.id] += 1000
+	if harness.add(na.validate3(a)) != current {
+		t.Error("invalid")
+	}
+	if harness.vals.getPreferredLCL(a, 0, counts) != a.id {
+		t.Error()
+	}
+	if harness.vals.getPreferredLCL(b, 0, counts) != a.id {
+		t.Error()
+	}
+	if harness.vals.getPreferredLCL(c, 0, counts) != a.id {
+		t.Error()
+	}
+	if harness.vals.getPreferredLCL(b, 2, counts) != b.id {
+		t.Error()
+	}
+}
+func TestAcquireValidatedLedger(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+
+	harness := newTestHarness()
+	na := harness.makeNode()
+	nb := harness.makeNode()
+	var id2, id3, id4 LedgerID
+	id2[0] = 2
+	id3[0] = 3
+	id4[0] = 4
+
+	v := na.validate(id2, 2, 0, 0, true)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	if harness.vals.numTrustedForLedger(id2) != 1 {
+		t.Error()
+	}
+	if harness.vals.getNodesAfter(genesisLedger, genesisID) != 0 {
+		t.Error()
+	}
+	s, lid := harness.vals.getPreferred(genesisLedger)
+	if s != 2 || lid != id2 {
+		t.Fatal(s, lid)
+	}
+	v = nb.validate(id3, 2, 0, 0, true)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	s, lid = harness.vals.getPreferred(genesisLedger)
+	if s != 2 || lid != id3 {
+		t.Error()
+	}
+	ab := newLedger("ab")
+	if harness.vals.getNodesAfter(genesisLedger, genesisID) != 1 {
+		t.Fatal(harness.vals.getNodesAfter(genesisLedger, genesisID))
+	}
+	time.Sleep(5 * time.Second)
+
+	v = na.validate(id4, 4, 0, 0, true)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	if harness.vals.numTrustedForLedger(id4) != 1 {
+		t.Error()
+	}
+	s, lid = harness.vals.getPreferred(genesisLedger)
+	if s != ab.seq || lid != ab.id {
+		t.Error()
+	}
+	v = nb.validate(id4, 4, 0, 0, true)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	if harness.vals.numTrustedForLedger(id4) != 2 {
+		t.Error()
+	}
+	s, lid = harness.vals.getPreferred(genesisLedger)
+	if s != ab.seq || lid != ab.id {
+		t.Error()
+	}
+	time.Sleep(5 * time.Second)
+	abcde := newLedger("abcde")
+	v = na.partial(abcde)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	v = nb.partial(abcde)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	s, lid = harness.vals.getPreferred(genesisLedger)
+	if s != abcde.seq || lid != abcde.id {
+		t.Error()
+	}
+}
+func TestNumTrustedForLedger(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+
+	harness := newTestHarness()
+	na := harness.makeNode()
+	nb := harness.makeNode()
+	a := newLedger("a")
+
+	v := na.partial(a)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	if harness.vals.numTrustedForLedger(a.id) != 0 {
+		t.Error()
+	}
+	v = nb.validate3(a)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	if harness.vals.numTrustedForLedger(a.id) != 1 {
+		t.Error()
+	}
+}
+func TestSeqEnforcer(t *testing.T) {
+	enf := &seqEnforcer{}
+	if !enf.do(time.Now(), 1) {
+		t.Error()
+	}
+	if !enf.do(time.Now(), 10) {
+		t.Error()
+	}
+	if enf.do(time.Now(), 5) {
+		t.Error()
+	}
+	if enf.do(time.Now(), 9) {
+		t.Error()
+	}
+	e := validationSetExpires
+	validationSetExpires = 5 * time.Second
+	time.Sleep(validationSetExpires - time.Millisecond)
+	if enf.do(time.Now(), 1) {
+		t.Error()
+	}
+	time.Sleep(2 * time.Millisecond)
+	if !enf.do(time.Now(), 1) {
+		t.Error()
+	}
+	validationSetExpires = e
+}
+
+func TestTrustChanged(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+
+	harness := newTestHarness()
+	na := harness.makeNode()
+	ab := newLedger("ab")
+	v := na.validate3(ab)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	listed := map[NodeID]struct{}{
+		na.nodeID: struct{}{},
+	}
+	trusted := []*validationT{v}
+	checker := func() {
+		tid := genesisID
+		if len(trusted) > 0 {
+			tid = trusted[0].id
+		}
+		for i, v := range harness.vals.currentTrusted() {
+			vv := v.(*validationT)
+			if !bytes.Equal(vv.bytes(), trusted[i].bytes()) {
+				t.Error()
+			}
+		}
+		if len(harness.vals.currentTrusted()) != len(trusted) {
+			t.Error()
+		}
+		for k := range harness.vals.getCurrentNodeIDs() {
+			if _, ok := listed[k]; !ok {
+				t.Error()
+			}
+		}
+		if len(harness.vals.getCurrentNodeIDs()) != len(listed) {
+			t.Error()
+		}
+		if harness.vals.getNodesAfter(genesisLedger, genesisID) != uint32(len(trusted)) {
+			t.Error()
+		}
+		if _, lid := harness.vals.getPreferred(genesisLedger); lid != tid {
+			t.Error()
+		}
+		for i, v := range harness.vals.getTrustedForLedger(tid) {
+			vv := v.(*validationT)
+			if !bytes.Equal(vv.bytes(), trusted[i].bytes()) {
+				t.Error()
+			}
+		}
+		if len(harness.vals.getTrustedForLedger(tid)) != len(trusted) {
+			t.Error()
+		}
+	}
+	checker()
+	trusted = nil
+	harness.vals.trustChanged(nil, map[NodeID]struct{}{
+		na.nodeID: struct{}{},
+	})
+	checker()
+
+	harness = newTestHarness()
+	na = harness.makeNode()
+	na.trusted = false
+	ab = newLedger("ab")
+	v = na.validate3(ab)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	listed = map[NodeID]struct{}{
+		na.nodeID: struct{}{},
+	}
+	trusted = nil
+	checker()
+
+	trusted = append(trusted, v)
+	harness.vals.trustChanged(map[NodeID]struct{}{
+		na.nodeID: struct{}{},
+	}, nil)
+	checker()
+
+	var id2 LedgerID
+	id2[0] = 2
+
+	harness = newTestHarness()
+	na = harness.makeNode()
+	ledgers = make(map[LedgerID]*tledger)
+	v = na.validate(id2, 2, 0, 0, true)
+	if harness.add(v) != current {
+		t.Error()
+	}
+	listed = map[NodeID]struct{}{
+		na.nodeID: struct{}{},
+	}
+	trusted = []*validationT{v}
+	vals := harness.vals
+	for i, v := range vals.currentTrusted() {
+		if trusted[i] != v {
+			t.Error()
+		}
+	}
+	if len(vals.currentTrusted()) != len(trusted) {
+		t.Error()
+	}
+	if _, lid := vals.getPreferred(genesisLedger); lid != v.id {
+		t.Error()
+	}
+	if vals.getNodesAfter(genesisLedger, genesisID) != 0 {
+		t.Error()
+	}
+	trusted = nil
+	vals.trustChanged(nil, map[NodeID]struct{}{
+		na.nodeID: struct{}{},
+	})
+	newLedger("ab")
+	for i, v := range vals.currentTrusted() {
+		if trusted[i] != v {
+			t.Error()
+		}
+	}
+	if len(vals.currentTrusted()) != len(trusted) {
+		t.Error()
+	}
+	if vals.getNodesAfter(genesisLedger, genesisID) != 0 {
+		t.Error()
+	}
 }

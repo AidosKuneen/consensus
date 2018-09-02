@@ -67,7 +67,7 @@ func (a agedMap) add(lid LedgerID, nid NodeID, v validation) {
 
 func (a agedMap) expire(expire time.Duration) {
 	for k, nv := range a {
-		if nv.touched.Add(expire).After(time.Now()) {
+		if nv.touched.Add(expire).Before(time.Now()) {
 			delete(a, k)
 		}
 	}

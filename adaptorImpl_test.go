@@ -42,6 +42,8 @@
 package consensus
 
 import (
+	"errors"
+	"log"
 	"time"
 )
 
@@ -53,7 +55,13 @@ type adaptorT struct {
 //
 // Attempt to acquire a specific ledger.
 func (a *adaptorT) AcquireLedger(id LedgerID) (ledger, error) {
-	return ledgers[id], nil
+	l, ok := ledgers[id]
+	if !ok {
+		log.Println("not found", id)
+		return nil, errors.New("not found")
+	}
+	log.Println("found")
+	return l, nil
 }
 
 // Acquire the transaction set associated with a proposed position.
@@ -138,5 +146,5 @@ func (a *adaptorT) Flush(remaining map[NodeID]validation) {
 
 // Return the current network time (used to determine staleness)
 func (a *adaptorT) Now() time.Time {
-	return toNetClock()
+	return time.Now()
 }
