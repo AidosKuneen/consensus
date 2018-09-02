@@ -87,7 +87,7 @@ func (l *tledger) IndexOf(s Seq) LedgerID {
 			return lid
 		}
 	}
-	return zeroID
+	panic("not found")
 }
 
 func newLedger(path string) *tledger {

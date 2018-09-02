@@ -471,7 +471,7 @@ func TestStress(t *testing.T) {
 			curr += string(a)
 			offset = (a + 1) * width
 		}
-		var tl ledger
+		var tl Ledger
 		if curr == "" {
 			tl = genesisLedger
 		} else {

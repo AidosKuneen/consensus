@@ -43,8 +43,6 @@ package consensus
 
 import "time"
 
-var zeroID [32]byte
-
 type unixTime int64
 
 //NodeID is a id for a node.
@@ -64,28 +62,28 @@ type Seq uint64
 
 type seqLedgerID [8 + 32]byte
 
-// A single transaction
-type txT interface {
+// TxT is a single transaction
+type TxT interface {
 	ID() TxID
 }
 
-// A set of transactions
-type txSet interface {
+// TxSet is A set of transactions
+type TxSet interface {
 	Exists(TxID) bool
 	// Return value should have semantics like Tx const *
-	Find(TxID) txT
+	Find(TxID) TxT
 	ID() TxSetID
 
 	// Return set of transactions that are not common to this set or other
 	// boolean indicates which set it was in
 	// If true I have the tx, otherwiwse o has it.
-	Compare(o txSet) map[TxID]bool
-	Insert(txT) bool
+	Compare(o TxSet) map[TxID]bool
+	Insert(TxT) bool
 	Erase(TxID) bool
 }
 
-// Agreed upon state that consensus transactions will modify
-type ledger interface {
+// Ledger which is Agreed upon state that consensus transactions will modify
+type Ledger interface {
 	// Unique identifier of ledgerr
 	ID() LedgerID
 	Seq() Seq
@@ -96,19 +94,19 @@ type ledger interface {
 	IndexOf(Seq) LedgerID
 }
 
-// Wraps a peer's ConsensusProposal
-type peerPosition interface {
-	Proposal() *consensusProposal
+//PeerPosition wraps a peer's ConsensusProposal
+type PeerPosition interface {
+	Proposal() *Proposal
 }
 
 type adaptor interface {
 	//-----------------------------------------------------------------------
 	//
 	// Attempt to acquire a specific ledger.
-	AcquireLedger(LedgerID) (ledger, error)
+	AcquireLedger(LedgerID) (Ledger, error)
 
 	// Acquire the transaction set associated with a proposed position.
-	AcquireTxSet(TxSetID) txSet
+	AcquireTxSet(TxSetID) TxSet
 
 	// Whether any transactions are in the open ledger
 	HasOpenTransactions() bool
@@ -119,50 +117,51 @@ type adaptor interface {
 	// Number of proposers that have validated a ledger descended from the
 	// given ledger; if prevLedger.id() != prevLedgerID, use prevLedgerID
 	// for the determination
-	ProposersFinished(ledger, LedgerID) uint
+	ProposersFinished(Ledger, LedgerID) uint
 
 	// Return the ID of the last closed (and validated) ledger that the
 	// application thinks consensus should use as the prior ledger.
-	GetPrevLedger(LedgerID, ledger, consensusMode) LedgerID
+	GetPrevLedger(LedgerID, Ledger, Mode) LedgerID
 
 	// Called whenever consensus operating mode changes
-	OnModeChange(consensusMode, consensusMode)
+	OnModeChange(Mode, Mode)
 
 	// Called when ledger closes
-	OnClose(ledger, time.Time, consensusMode) *consensusResult
+	OnClose(Ledger, time.Time, Mode) *Result
 
 	// Called when ledger is accepted by consensus
-	OnAccept(*consensusResult, ledger, time.Duration, *consensusCloseTimes, consensusMode)
+	OnAccept(*Result, Ledger, time.Duration, *CloseTimes, Mode)
 
 	// Called when ledger was forcibly accepted by consensus via the simulate
 	// function.
-	OnForceAccept(*consensusResult, ledger, time.Duration, *consensusCloseTimes, consensusMode)
+	OnForceAccept(*Result, Ledger, time.Duration, *CloseTimes, Mode)
 
 	// Propose the position to peers.
-	Propose(consensusProposal)
+	Propose(Proposal)
 
 	// Share a received peer proposal with other peer's.
-	SharePosition(peerPosition)
+	SharePosition(PeerPosition)
 
 	// Share a disputed transaction with peers
-	ShareTx(txT)
+	ShareTx(TxT)
 
 	// Share given transaction set with peers
-	ShareTxset(txSet)
+	ShareTxset(TxSet)
 
 	// Handle a newly stale validation, this should do minimal work since
 	// it is called by Validations while it may be iterating Validations
 	// under lock
-	OnStale(validation)
+	OnStale(Validation)
 
 	// Flush the remaining validations (typically done on shutdown)
-	Flush(remaining map[NodeID]validation)
+	Flush(remaining map[NodeID]Validation)
 
 	// Return the current network time (used to determine staleness)
 	Now() time.Time
 }
 
-type validation interface {
+//Validation is a validation info of ledger.
+type Validation interface {
 	// Ledger ID associated with this validation
 	LedgerID() LedgerID
 

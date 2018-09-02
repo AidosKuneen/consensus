@@ -95,21 +95,21 @@ func (n *nodeT) validate(id LedgerID, seq Seq, signOffset, seenOffset time.Durat
 		trusted:  n.trusted,
 	}
 }
-func (n *nodeT) validate2(l ledger, signOffset, seenOffset time.Duration) *validationT {
+func (n *nodeT) validate2(l Ledger, signOffset, seenOffset time.Duration) *validationT {
 	return n.validate(l.ID(), l.Seq(), signOffset, seenOffset, true)
 }
 
-func (n *nodeT) validate3(l ledger) *validationT {
+func (n *nodeT) validate3(l Ledger) *validationT {
 	return n.validate(l.ID(), l.Seq(), 0, 0, true)
 }
 
-func (n *nodeT) partial(l ledger) *validationT {
+func (n *nodeT) partial(l Ledger) *validationT {
 	return n.validate(l.ID(), l.Seq(), 0, 0, false)
 }
 
 type staleData struct {
-	stale   []validation
-	flushed map[NodeID]validation
+	stale   []Validation
+	flushed map[NodeID]Validation
 }
 
 type testHarness struct {
@@ -120,7 +120,7 @@ type testHarness struct {
 
 func newTestHarness() *testHarness {
 	sd := staleData{
-		flushed: make(map[NodeID]validation),
+		flushed: make(map[NodeID]Validation),
 	}
 	vs := newValidations(&adaptorT{
 		staleData: &sd,
@@ -267,7 +267,7 @@ func TestAddValidation4(t *testing.T) {
 	for _, doFull := range []bool{true, false} {
 		harness := newTestHarness()
 		n := harness.makeNode()
-		process := func(lgr ledger) valStatus {
+		process := func(lgr Ledger) valStatus {
 			if doFull {
 				return harness.add(n.validate3(lgr))
 			}
@@ -375,7 +375,7 @@ func TestGetNodesAfter(t *testing.T) {
 	if harness.add(nd.partial(a)) != current {
 		t.Error("invalid add")
 	}
-	for _, l := range []ledger{a, ab, abc, ad} {
+	for _, l := range []Ledger{a, ab, abc, ad} {
 		if harness.vals.getNodesAfter(l, l.ID()) != 0 {
 			t.Error("invalid")
 		}

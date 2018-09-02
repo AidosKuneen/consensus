@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// This is a rewrite of https://github.com/ripple/rippled/src/ripple/consensus
+// This is a rewrite of https://github.com/ripple/rippled/src/test/consensus
 // covered by:
 //------------------------------------------------------------------------------
 /*
@@ -40,65 +40,3 @@
 //==============================================================================
 
 package consensus
-
-import (
-	"encoding/binary"
-	"time"
-)
-
-type agedMap map[LedgerID]*nodeVal
-
-type nodeVal struct {
-	m       map[NodeID]Validation
-	touched time.Time
-}
-
-func (a agedMap) add(lid LedgerID, nid NodeID, v Validation) {
-	if m, ok := a[lid]; ok {
-		m.m[nid] = v
-		return
-	}
-	a[lid] = &nodeVal{
-		m:       make(map[NodeID]Validation),
-		touched: time.Now(),
-	}
-	a[lid].m[nid] = v
-}
-
-func (a agedMap) expire(expire time.Duration) {
-	for k, nv := range a {
-		if nv.touched.Add(expire).Before(time.Now()) {
-			delete(a, k)
-		}
-	}
-}
-
-func (nv *nodeVal) touch() {
-	nv.touched = time.Now()
-}
-
-func (a agedMap) loop(id LedgerID, pre func(int), f func(NodeID, Validation)) {
-	nv, ok := a[id]
-	if !ok {
-		return
-	}
-	nv.touch()
-	pre(len(nv.m))
-	for k, v := range nv.m {
-		f(k, v)
-	}
-}
-
-func toSeqLedgerID(s Seq, lid LedgerID) seqLedgerID {
-	var r seqLedgerID
-	binary.LittleEndian.PutUint64(r[:], uint64(s))
-	copy(r[8:], lid[:])
-	return r
-}
-
-func fromSeqLedgerID(sl seqLedgerID) (Seq, LedgerID) {
-	s := binary.LittleEndian.Uint64(sl[:8])
-	var lid LedgerID
-	copy(lid[:], sl[8:])
-	return Seq(s), lid
-}

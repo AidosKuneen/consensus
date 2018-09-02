@@ -43,30 +43,6 @@ package consensus
 
 import "time"
 
-/** Represents a proposed position taken during a round of consensus.
-
-  During consensus, peers seek agreement on a set of transactions to
-  apply to the prior ledger to generate the next ledger.  Each peer takes a
-  position on whether to include or exclude potential transactions.
-  The position on the set of transactions is proposed to its peers as an
-  instance of the ConsensusProposal class.
-
-  An instance of ConsensusProposal can be either our own proposal or one of
-  our peer's.
-
-  As consensus proceeds, peers may change their position on the transaction,
-  or choose to abstain. Each successive proposal includes a strictly
-  monotonically increasing number (or, if a peer is choosing to abstain,
-  the special value `seqLeave`).
-
-  Refer to @ref Consensus for requirements of the template arguments.
-
-  @tparam NodeID_t Type used to uniquely identify nodes/peers
-  @tparam LedgerID_t Type used to uniquely identify ledgers
-  @tparam Position_t Type used to represent the position taken on transactions
-                     under consideration during this round of consensus
-*/
-
 const (
 	//< Sequence value when a peer initially joins consensus
 	seqJoin Seq = 0
@@ -74,24 +50,41 @@ const (
 	seqLeave Seq = 0xffffffff
 )
 
-type consensusProposal struct {
+//Proposal represents a proposed position taken during a round of consensus.
+//   During consensus, peers seek agreement on a set of transactions to
+//   apply to the prior ledger to generate the next ledger.  Each peer takes a
+//   position on whether to include or exclude potential transactions.
+//   The position on the set of transactions is proposed to its peers as an
+//   instance of the ConsensusProposal class.
+//   An instance of ConsensusProposal can be either our own proposal or one of
+//   our peer's.
+//   As consensus proceeds, peers may change their position on the transaction,
+//   or choose to abstain. Each successive proposal includes a strictly
+//   monotonically increasing number (or, if a peer is choosing to abstain,
+//   the special value `seqLeave`).
+//   Refer to @ref Consensus for requirements of the template arguments.
+//   @tparam NodeID_t Type used to uniquely identify nodes/peers
+//   @tparam LedgerID_t Type used to uniquely identify ledgers
+//   @tparam Position_t Type used to represent the position taken on transactions
+//                      under consideration during this round of consensus
+type Proposal struct {
 	//! Unique identifier of prior ledger this proposal is based on
-	previousLedger LedgerID
+	PreviousLedger LedgerID
 
-	//! Unique identifier of the position this proposal is taking
-	position TxSetID
+	//! Unique identifier of the Position this proposal is taking
+	Position TxSetID
 
 	//! The ledger close time this position is taking
-	closeTime time.Time
+	CloseTime time.Time
 
 	// !The time this position was last updated
-	seenTime time.Time
+	SeenTime time.Time
 
 	//! The sequence number of these positions taken by this node
-	proposeSeq Seq
+	ProposeSeq Seq
 
 	//! The identifier of the node taking this position
-	nodeID NodeID
+	NodeID NodeID
 }
 
 /** Constructor
@@ -103,34 +96,34 @@ type consensusProposal struct {
   @param now Time when the proposal was taken.
   @param nodeID ID of node/peer taking this position.
 */
-func newConsensusProposal(prev LedgerID, seq Seq, positon TxSetID, closeTime, now time.Time, nodeID NodeID) *consensusProposal {
-	return &consensusProposal{
-		previousLedger: prev,
-		position:       positon,
-		closeTime:      closeTime,
-		seenTime:       now,
-		proposeSeq:     seq,
-		nodeID:         nodeID,
+func newConsensusProposal(prev LedgerID, seq Seq, positon TxSetID, closeTime, now time.Time, nodeID NodeID) *Proposal {
+	return &Proposal{
+		PreviousLedger: prev,
+		Position:       positon,
+		CloseTime:      closeTime,
+		SeenTime:       now,
+		ProposeSeq:     seq,
+		NodeID:         nodeID,
 	}
 }
 
 /** Whether this is the first position taken during the current
   consensus round.
 */
-func (p *consensusProposal) isInitial() bool {
-	return p.proposeSeq == seqJoin
+func (p *Proposal) isInitial() bool {
+	return p.ProposeSeq == seqJoin
 }
 
 //! Get whether this node left the consensus process
 
-func (p *consensusProposal) isBowOut() bool {
-	return p.proposeSeq == seqLeave
+func (p *Proposal) isBowOut() bool {
+	return p.ProposeSeq == seqLeave
 }
 
 //! Get whether this position is stale relative to the provided cutoff
 
-func (p *consensusProposal) isStale(cutoff time.Time) bool {
-	return p.seenTime.Before(cutoff)
+func (p *Proposal) isStale(cutoff time.Time) bool {
+	return p.SeenTime.Before(cutoff)
 }
 
 /** Update the position during the consensus process. This will increment
@@ -140,13 +133,13 @@ func (p *consensusProposal) isStale(cutoff time.Time) bool {
   @param newCloseTime The new close time.
   @param now the time The new position was taken
 */
-func (p *consensusProposal) changePosition(
+func (p *Proposal) changePosition(
 	newPosition TxSetID, newCloseTime time.Time, now time.Time) {
-	p.position = newPosition
-	p.closeTime = newCloseTime
-	p.seenTime = now
-	if p.proposeSeq != seqLeave {
-		p.proposeSeq++
+	p.Position = newPosition
+	p.CloseTime = newCloseTime
+	p.SeenTime = now
+	if p.ProposeSeq != seqLeave {
+		p.ProposeSeq++
 	}
 }
 
@@ -154,12 +147,12 @@ func (p *consensusProposal) changePosition(
   Update position to indicate the node left consensus.
   @param now Time when this node left consensus.
 */
-func (p *consensusProposal) bowOut(now time.Time) {
-	p.seenTime = now
-	p.proposeSeq = seqLeave
+func (p *Proposal) bowOut(now time.Time) {
+	p.SeenTime = now
+	p.ProposeSeq = seqLeave
 }
-func (p *consensusProposal) equals(p2 *consensusProposal) bool {
-	return p.nodeID == p2.nodeID && p.proposeSeq == p2.proposeSeq &&
-		p.previousLedger == p2.previousLedger && p.position == p2.position &&
-		p.closeTime.Equal(p2.closeTime) && p.seenTime.Equal(p2.seenTime)
+func (p *Proposal) equals(p2 *Proposal) bool {
+	return p.NodeID == p2.NodeID && p.ProposeSeq == p2.ProposeSeq &&
+		p.PreviousLedger == p2.PreviousLedger && p.Position == p2.Position &&
+		p.CloseTime.Equal(p2.CloseTime) && p.SeenTime.Equal(p2.SeenTime)
 }

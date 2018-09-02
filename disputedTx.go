@@ -43,84 +43,79 @@ package consensus
 
 import "log"
 
-/** A transaction discovered to be in dispute during conensus.
-
-  During consensus, a @ref DisputedTx is created when a transaction
-  is discovered to be disputed. The object persists only as long as
-  the dispute.
-
-  Undisputed transactions have no corresponding @ref DisputedTx object.
-
-  Refer to @ref Consensus for details on the template type requirements.
-
-  @tparam Tx_t The type for a transaction
-  @tparam NodeID_t The type for a node identifier
-*/
-
+//mapT is from NodeID to vote
 type mapT map[NodeID]bool
 
-type disputedTx struct {
-	yays    int  //< Number of yes votes
-	nays    int  //< Number of no votes
-	ourVote bool //< Our vote (true is yes)
-	tx      txT  //< Transaction under dispute
-	votes   mapT //< Map from NodeID to vote
+// DisputedTx is A transaction discovered to be in dispute during conensus.
+//   During consensus, a @ref DisputedTx is created when a transaction
+//   is discovered to be disputed. The object persists only as long as
+//   the dispute.
+//   Undisputed transactions have no corresponding @ref DisputedTx object.
+//   Refer to @ref Consensus for details on the template type requirements.
+//   @tparam Tx_t The type for a transaction
+//   @tparam NodeID_t The type for a node identifier
+type DisputedTx struct {
+	Yays    int  //< Number of yes votes
+	Nays    int  //< Number of no votes
+	OurVote bool //< Our vote (true is yes)
+	Tx      TxT  //< Transaction under dispute
+	Votes   mapT //< Map from NodeID to vote
 }
 
-func newDisputedTx(tr txT, ourVote bool, numPeers uint) *disputedTx {
-	return &disputedTx{
-		ourVote: ourVote,
-		tx:      tr,
-		votes:   make(mapT),
+func newDisputedTx(tr TxT, ourVote bool, numPeers uint) *DisputedTx {
+	return &DisputedTx{
+		OurVote: ourVote,
+		Tx:      tr,
+		Votes:   make(mapT),
 	}
 }
 
-func (dtx *disputedTx) setVote(peer NodeID, votesYes bool) {
-	res, exist := dtx.votes[peer]
-	dtx.votes[peer] = votesYes
+func (dtx *DisputedTx) setVote(peer NodeID, votesYes bool) {
+	res, exist := dtx.Votes[peer]
+	dtx.Votes[peer] = votesYes
 
 	// new vote
 	switch {
 	case !exist:
 		if votesYes {
-			log.Println("Peer ", peer, " votes YES on ", dtx.tx.ID())
-			dtx.yays++
+			log.Println("Peer ", peer, " votes YES on ", dtx.Tx.ID())
+			dtx.Yays++
 		} else {
-			log.Println("Peer ", peer, " votes NO on ", dtx.tx.ID())
-			dtx.nays++
+			log.Println("Peer ", peer, " votes NO on ", dtx.Tx.ID())
+			dtx.Nays++
 		}
 	case votesYes && !res:
 		// changes vote to yes
-		log.Println("Peer ", peer, "now votes YES on ", dtx.tx.ID())
-		dtx.nays--
-		dtx.yays++
+		log.Println("Peer ", peer, "now votes YES on ", dtx.Tx.ID())
+		dtx.Nays--
+		dtx.Yays++
 		// changes vote to no
 	case !votesYes && res:
-		log.Println("Peer ", peer, "now votes NO on ", dtx.tx.ID())
-		dtx.nays++
-		dtx.yays--
+		log.Println("Peer ", peer, "now votes NO on ", dtx.Tx.ID())
+		dtx.Nays++
+		dtx.Yays--
 	}
 }
 
 // Remove a peer's vote on this disputed transasction
-func (dtx *disputedTx) unVote(peer NodeID) {
-	it, exist := dtx.votes[peer]
+func (dtx *DisputedTx) unVote(peer NodeID) {
+	it, exist := dtx.Votes[peer]
 
 	if exist {
 		if it {
-			dtx.yays--
+			dtx.Yays--
 		} else {
-			dtx.nays--
+			dtx.Nays--
 		}
-		delete(dtx.votes, peer)
+		delete(dtx.Votes, peer)
 	}
 }
 
-func (dtx *disputedTx) updateVote(percentTime int, proposing bool) bool {
-	if dtx.ourVote && dtx.nays == 0 {
+func (dtx *DisputedTx) updateVote(percentTime int, proposing bool) bool {
+	if dtx.OurVote && dtx.Nays == 0 {
 		return false
 	}
-	if !dtx.ourVote && dtx.yays == 0 {
+	if !dtx.OurVote && dtx.Yays == 0 {
 		return false
 	}
 	weight := 0
@@ -128,10 +123,10 @@ func (dtx *disputedTx) updateVote(percentTime int, proposing bool) bool {
 	if proposing { // give ourselves full weight
 		// This is basically the percentage of nodes voting 'yes' (including us)
 		vote := 0
-		if dtx.ourVote {
+		if dtx.OurVote {
 			vote = 100
 		}
-		weight = (dtx.yays*100 + vote) / (dtx.nays + dtx.yays + 1)
+		weight = (dtx.Yays*100 + vote) / (dtx.Nays + dtx.Yays + 1)
 		// To prevent avalanche stalls, we increase the needed weight slightly
 		// over time.
 		switch {
@@ -147,15 +142,15 @@ func (dtx *disputedTx) updateVote(percentTime int, proposing bool) bool {
 	} else {
 		// don't let us outweigh a proposing node, just recognize consensus
 		weight = -1
-		newPosition = dtx.yays > dtx.nays
+		newPosition = dtx.Yays > dtx.Nays
 	}
 
-	if newPosition == dtx.ourVote {
-		log.Println("No change (", dtx.ourVote, ") : weight ", weight, ", percent ", percentTime)
+	if newPosition == dtx.OurVote {
+		log.Println("No change (", dtx.OurVote, ") : weight ", weight, ", percent ", percentTime)
 		return false
 	}
 
-	dtx.ourVote = newPosition
-	log.Println("We now vote ", dtx.ourVote, " on ", dtx.tx.ID())
+	dtx.OurVote = newPosition
+	log.Println("We now vote ", dtx.OurVote, " on ", dtx.Tx.ID())
 	return true
 }

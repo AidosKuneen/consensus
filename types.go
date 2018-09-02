@@ -70,31 +70,35 @@ import (
   we attempt to catch up.
 */
 
-type consensusMode byte
+//Mode of consensus
+type Mode byte
 
 const (
-	//! We are normal participant in consensus and propose our position
-	modeProposing consensusMode = iota
-	//! We are modeObserving peer positions, but not proposing our position
-	modeObserving
-	//! We have the wrong ledger and are attempting to acquire it
-	modeWrongLedger
-	//! We switched ledgers since we started this consensus round but are now
-	//! running on what we believe is the correct ledger.  This mode is as
-	//! if we entered the round observing, but is used to indicate we did
-	//! have the wrongLedger at some point.
-	modeSwitchedLedger
+	//ModeProposing means we are normal participant in consensus and propose our position
+	ModeProposing Mode = iota
+
+	//ModeObserving means we are ModeObserving peer positions, but not proposing our position
+	ModeObserving
+
+	//ModeWrongLedger means we have the wrong ledger and are attempting to acquire it
+	ModeWrongLedger
+
+	//ModeSwitchedLedger means we switched ledgers since we started this consensus round but are now
+	//running on what we believe is the correct ledger.  This mode is as
+	//if we entered the round observing, but is used to indicate we did
+	//have the wrongLedger at some point.
+	ModeSwitchedLedger
 )
 
-func (m consensusMode) String() string {
+func (m Mode) String() string {
 	switch m {
-	case modeProposing:
+	case ModeProposing:
 		return "proposing"
-	case modeObserving:
+	case ModeObserving:
 		return "observing"
-	case modeWrongLedger:
+	case ModeWrongLedger:
 		return "wrongLedger"
-	case modeSwitchedLedger:
+	case ModeSwitchedLedger:
 		return "switchedLedger"
 	default:
 		return "unknown"
@@ -145,99 +149,100 @@ func (p consensusPhase) String() string {
 	}
 }
 
-type consensusTimer struct {
-	start time.Time
-	dur   time.Duration
+//Timer represents star time and duration.
+type Timer struct {
+	Start time.Time
+	Dur   time.Duration
 }
 
-func (ct consensusTimer) read() time.Duration {
-	return ct.dur
+func (ct Timer) read() time.Duration {
+	return ct.Dur
 }
 
-func (ct consensusTimer) tick(fixed time.Duration) {
-	ct.dur += fixed
+func (ct Timer) tick(fixed time.Duration) {
+	ct.Dur += fixed
 }
 
-func (ct consensusTimer) reset(tp time.Time) {
-	ct.start = tp
-	ct.dur = 0
+func (ct Timer) reset(tp time.Time) {
+	ct.Start = tp
+	ct.Dur = 0
 }
 
-func (ct consensusTimer) tickTime(tp time.Time) {
-	ct.dur = tp.Sub(ct.start)
+func (ct Timer) tickTime(tp time.Time) {
+	ct.Dur = tp.Sub(ct.Start)
 }
 
-/** Stores the set of initial close times
-
-  The initial consensus proposal from each peer has that peer's view of
-  when the ledger closed.  This object stores all those close times for
-  analysis of clock drift between peers.
-*/
-type consensusCloseTimes struct {
+//CloseTimes Stores the set of initial close times
+//The initial consensus proposal from each peer has that peer's view of
+//when the ledger closed.  This object stores all those close times for
+//analysis of clock drift between peers.
+type CloseTimes struct {
 	//! Close time estimates, keep ordered for predictable traverse
-	peers map[unixTime]int
+	Peers map[unixTime]int
 
 	//! Our close time estimate
-	self time.Time
+	Self time.Time
 }
 
-func newConsensusCloseTimes() *consensusCloseTimes {
-	return &consensusCloseTimes{
-		peers: make(map[unixTime]int),
+func newConsensusCloseTimes() *CloseTimes {
+	return &CloseTimes{
+		Peers: make(map[unixTime]int),
 	}
 }
 
-/** Whether we have or don't have a consensus */
-type consensusState byte
+// State means whether we have or don't have a consensus
+type State byte
 
 const (
-	stateNo      consensusState = iota //!< We do not have consensus
-	stateMovedOn                       //!< The network has consensus without us
-	stateYes                           //!< We have consensus along with the network
+	// StateNo means We do not have consensus
+	StateNo State = iota
+	//StateMovedOn maens The network has consensus without us
+	StateMovedOn
+	//StateYes means We have consensus along with the network
+	StateYes
 )
 
-/** Encapsulates the result of consensus.
-
-   Stores all relevant data for the outcome of consensus on a single
-  ledger.
-
-   @tparam Traits Traits class defining the concrete consensus types used
-                  by the application.
-*/
-type consensusResult struct {
+//Result encapsulates the result of consensus.
+//    Stores all relevant data for the outcome of consensus on a single
+//   ledger.
+//    @tparam Traits Traits class defining the concrete consensus types used
+//                   by the application.
+type Result struct {
 	//! The set of transactions consensus agrees go in the ledger
-	txns txSet
+	// You must fill it when OnClose is called.
+	Txns TxSet
 
-	//! Our proposed position on transactions/close time
-	position consensusProposal
+	//! Our proposed Position on transactions/close time
+	// You must fill it when OnClose is called.
+	Position Proposal
 
 	//! Transactions which are under dispute with our peers
-	disputes map[TxID]*disputedTx
+	Disputes map[TxID]*DisputedTx
 
 	// Set of TxSet ids we have already compared/created disputes
-	compares map[TxSetID]txSet
+	Compares map[TxSetID]TxSet
 
 	// Measures the duration of the establish phase for this consensus round
-	roundTime consensusTimer
+	RoundTime Timer
 
-	// Indicates state in which consensus ended.  Once in the accept phase
+	// Indicates State in which consensus ended.  Once in the accept phase
 	// will be either Yes or MovedOn
-	state consensusState
+	State State
 
 	// The number of peers proposing during the round
-	proposers uint
+	Proposers uint
 }
 
-func newConsensusResult(txns txSet, pos consensusProposal) *consensusResult {
-	if txns.ID() != pos.position {
+func newConsensusResult(txns TxSet, pos Proposal) *Result {
+	if txns.ID() != pos.Position {
 		panic("invalid txSet and proposal")
 	}
-	return &consensusResult{
-		txns:     txns,
-		position: pos,
-		state:    stateNo,
-		disputes: make(map[TxID]*disputedTx),
-		compares: make(map[TxSetID]txSet),
+	return &Result{
+		Txns:     txns,
+		Position: pos,
+		State:    StateNo,
+		Disputes: make(map[TxID]*DisputedTx),
+		Compares: make(map[TxSetID]TxSet),
 	}
 
 }

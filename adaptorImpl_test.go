@@ -54,7 +54,7 @@ type adaptorT struct {
 //-----------------------------------------------------------------------
 //
 // Attempt to acquire a specific ledger.
-func (a *adaptorT) AcquireLedger(id LedgerID) (ledger, error) {
+func (a *adaptorT) AcquireLedger(id LedgerID) (Ledger, error) {
 	l, ok := ledgers[id]
 	if !ok {
 		log.Println("not found", id)
@@ -65,7 +65,7 @@ func (a *adaptorT) AcquireLedger(id LedgerID) (ledger, error) {
 }
 
 // Acquire the transaction set associated with a proposed position.
-func (a *adaptorT) AcquireTxSet(TxSetID) txSet {
+func (a *adaptorT) AcquireTxSet(TxSetID) TxSet {
 	return nil
 }
 
@@ -82,65 +82,65 @@ func (a *adaptorT) ProposersValidated(LedgerID) uint {
 // Number of proposers that have validated a ledger descended from the
 // given ledger; if prevLedger.id() != prevLedgerID, use prevLedgerID
 // for the determination
-func (a *adaptorT) ProposersFinished(ledger, LedgerID) uint {
+func (a *adaptorT) ProposersFinished(Ledger, LedgerID) uint {
 	return 0
 }
 
 // Return the ID of the last closed (and validated) ledger that the
 // application thinks consensus should use as the prior ledger.
-func (a *adaptorT) GetPrevLedger(LedgerID, ledger, consensusMode) LedgerID {
-	return zeroID
+func (a *adaptorT) GetPrevLedger(LedgerID, Ledger, Mode) LedgerID {
+	return genesisID
 }
 
 // Called whenever consensus operating mode changes
-func (a *adaptorT) OnModeChange(consensusMode, consensusMode) {
+func (a *adaptorT) OnModeChange(Mode, Mode) {
 }
 
 // Called when ledger closes
-func (a *adaptorT) OnClose(ledger, time.Time, consensusMode) *consensusResult {
+func (a *adaptorT) OnClose(Ledger, time.Time, Mode) *Result {
 	return nil
 }
 
 // Called when ledger is accepted by consensus
-func (a *adaptorT) OnAccept(*consensusResult, ledger, time.Duration, *consensusCloseTimes, consensusMode) {
+func (a *adaptorT) OnAccept(*Result, Ledger, time.Duration, *CloseTimes, Mode) {
 
 }
 
 // Called when ledger was forcibly accepted by consensus via the simulate
 // function.
-func (a *adaptorT) OnForceAccept(*consensusResult, ledger, time.Duration, *consensusCloseTimes, consensusMode) {
+func (a *adaptorT) OnForceAccept(*Result, Ledger, time.Duration, *CloseTimes, Mode) {
 
 }
 
 // Propose the position to peers.
-func (a *adaptorT) Propose(consensusProposal) {
+func (a *adaptorT) Propose(Proposal) {
 
 }
 
 // Share a received peer proposal with other peer's.
-func (a *adaptorT) SharePosition(peerPosition) {
+func (a *adaptorT) SharePosition(PeerPosition) {
 
 }
 
 // Share a disputed transaction with peers
-func (a *adaptorT) ShareTx(txT) {
+func (a *adaptorT) ShareTx(TxT) {
 
 }
 
 // Share given transaction set with peers
-func (a *adaptorT) ShareTxset(txSet) {
+func (a *adaptorT) ShareTxset(TxSet) {
 
 }
 
 // Handle a newly stale validation, this should do minimal work since
 // it is called by Validations while it may be iterating Validations
 // under lock
-func (a *adaptorT) OnStale(v validation) {
+func (a *adaptorT) OnStale(v Validation) {
 	a.staleData.stale = append(a.staleData.stale, v)
 }
 
 // Flush the remaining validations (typically done on shutdown)
-func (a *adaptorT) Flush(remaining map[NodeID]validation) {
+func (a *adaptorT) Flush(remaining map[NodeID]Validation) {
 	a.staleData.flushed = remaining
 }
 

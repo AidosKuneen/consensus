@@ -271,7 +271,7 @@ type validations struct {
 	mutex sync.Mutex
 
 	// Validations from currently listed and trusted nodes (partial and full)
-	current map[NodeID]validation
+	current map[NodeID]Validation
 
 	// Used to enforce the largest validation invariant for the local node
 	localSeqEnforcer seqEnforcer
@@ -287,7 +287,7 @@ type validations struct {
 
 	// Last (validated) ledger successfully acquired. If in this map, it is
 	// accounted for in the trie.
-	lastLedger map[NodeID]ledger
+	lastLedger map[NodeID]Ledger
 
 	// Set of ledgers being acquired from the network
 	acquiring map[seqLedgerID]map[NodeID]struct{}
@@ -297,7 +297,7 @@ type validations struct {
 	adaptor adaptor
 }
 
-func (v *validations) removeTrie(nodeID NodeID, val validation) {
+func (v *validations) removeTrie(nodeID NodeID, val Validation) {
 	slid := toSeqLedgerID(val.Seq(), val.LedgerID())
 	if a, ok := v.acquiring[slid]; ok {
 		delete(a, nodeID)
@@ -328,7 +328,7 @@ func (v *validations) checkAcquired() {
 }
 
 // Update the trie to reflect a new validated ledger
-func (v *validations) updateTrie(nodeID NodeID, l ledger) {
+func (v *validations) updateTrie(nodeID NodeID, l Ledger) {
 	oldl, ok := v.lastLedger[nodeID]
 	v.lastLedger[nodeID] = l
 	if ok {
@@ -350,7 +350,7 @@ func (v *validations) updateTrie(nodeID NodeID, l ledger) {
   @param prior If not none, the last current validated ledger Seq,ID of key
 */
 func (v *validations) updateTrie2(
-	nodeID NodeID, val validation, seq Seq, id LedgerID) {
+	nodeID NodeID, val Validation, seq Seq, id LedgerID) {
 	// Clear any prior acquiring ledger for this node
 	slid := toSeqLedgerID(seq, id)
 	if it, ok := v.acquiring[slid]; ok {
@@ -362,7 +362,7 @@ func (v *validations) updateTrie2(
 	v.updateTrie3(nodeID, val)
 }
 
-func (v *validations) updateTrie3(nodeID NodeID, val validation) {
+func (v *validations) updateTrie3(nodeID NodeID, val Validation) {
 	if !val.Trusted() {
 		panic("validator is not trusted")
 	}
@@ -397,7 +397,7 @@ are checked and any stale validations are flushed from the trie.
 */
 func (v *validations) withTrie(f func(*ledgerTrie)) {
 	// Call current to flush any stale validations
-	v.doCurrent(func(i int) {}, func(n NodeID, v validation) {})
+	v.doCurrent(func(i int) {}, func(n NodeID, v Validation) {})
 	v.checkAcquired()
 	f(v.trie)
 }
@@ -418,7 +418,7 @@ func (v *validations) withTrie(f func(*ledgerTrie)) {
            its arguments and will be called with mutex_ under lock.
 */
 
-func (v *validations) doCurrent(pre func(int), f func(NodeID, validation)) {
+func (v *validations) doCurrent(pre func(int), f func(NodeID, Validation)) {
 	t := v.adaptor.Now()
 	pre(len(v.current))
 	for k, val := range v.current {
@@ -447,7 +447,7 @@ func (v *validations) doCurrent(pre func(int), f func(NodeID, validation)) {
    @warning The invokable f is expected to be a simple transformation of
   its arguments and will be called with mutex_ under lock.
 */
-func (v *validations) loopByLedger(id LedgerID, pre func(int), f func(NodeID, validation)) {
+func (v *validations) loopByLedger(id LedgerID, pre func(int), f func(NodeID, Validation)) {
 	v.byLedger.loop(id, pre, f)
 }
 
@@ -461,9 +461,9 @@ func newValidations(a adaptor) *validations {
 	return &validations{
 		byLedger:     make(agedMap),
 		adaptor:      a,
-		current:      make(map[NodeID]validation),
+		current:      make(map[NodeID]Validation),
 		seqEnforcers: make(map[NodeID]seqEnforcer),
-		lastLedger:   make(map[NodeID]ledger),
+		lastLedger:   make(map[NodeID]Ledger),
 		acquiring:    make(map[seqLedgerID]map[NodeID]struct{}),
 		trie:         newLedgerTrie(),
 	}
@@ -490,7 +490,7 @@ func (v *validations) canValidateSeq(s Seq) bool {
   @param val The validation to store
   @return The outcome
 */
-func (v *validations) add(nodeID NodeID, val validation) valStatus {
+func (v *validations) add(nodeID NodeID, val Validation) valStatus {
 	if !isCurrent(v.adaptor.Now(), val.SignTime(), val.SeenTime()) {
 		return stale
 	}
@@ -587,7 +587,7 @@ func (v *validations) trustChanged(added, removed map[NodeID]struct{}) {
           or Seq{0},ID{0} if no trusted validations are available to
           determine the preferred ledger.
 */
-func (v *validations) getPreferred(curr ledger) (Seq, LedgerID) {
+func (v *validations) getPreferred(curr Ledger) (Seq, LedgerID) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	var preferred *spanTip
@@ -648,9 +648,9 @@ func (v *validations) getPreferred(curr ledger) (Seq, LedgerID) {
              is not valid
 */
 
-func (v *validations) getPreferred2(curr ledger, minValidSeq Seq) LedgerID {
+func (v *validations) getPreferred2(curr Ledger, minValidSeq Seq) LedgerID {
 	preferredSeq, preferredID := v.getPreferred(curr)
-	if preferredSeq >= minValidSeq && preferredID != zeroID {
+	if preferredSeq >= minValidSeq && preferredID != genesisID {
 		return preferredID
 	}
 	return curr.ID()
@@ -671,7 +671,7 @@ func (v *validations) getPreferred2(curr ledger, minValidSeq Seq) LedgerID {
   @note The minSeq does not apply to the peerCounts, since this function
         does not know their sequence number
 */
-func (v *validations) getPreferredLCL(lcl ledger, minSeq Seq, peerCounts map[LedgerID]uint32) LedgerID {
+func (v *validations) getPreferredLCL(lcl Ledger, minSeq Seq, peerCounts map[LedgerID]uint32) LedgerID {
 	preferredSeq, preferredID := v.getPreferred(lcl)
 	// Trusted validations exist
 	if preferredID != genesisID && preferredSeq > 0 {
@@ -709,7 +709,7 @@ func (v *validations) getPreferredLCL(lcl ledger, minSeq Seq, peerCounts map[Led
   @note If ledger.id() != ledgerID, only counts immediate child ledgers of
         ledgerID
 */
-func (v *validations) getNodesAfter(l ledger, id LedgerID) uint32 {
+func (v *validations) getNodesAfter(l Ledger, id LedgerID) uint32 {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 
@@ -734,15 +734,15 @@ func (v *validations) getNodesAfter(l ledger, id LedgerID) uint32 {
 /** Get the currently trusted full validations
   @return Vector of validations from currently trusted validators
 */
-func (v *validations) currentTrusted() []validation {
-	var ret []validation
+func (v *validations) currentTrusted() []Validation {
+	var ret []Validation
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	v.doCurrent(
 		func(numValidations int) {
-			ret = make([]validation, 0, numValidations)
+			ret = make([]Validation, 0, numValidations)
 		},
-		func(n NodeID, v validation) {
+		func(n NodeID, v Validation) {
 			if v.Trusted() && v.Full() {
 				ret = append(ret, v)
 			}
@@ -760,7 +760,7 @@ func (v *validations) getCurrentNodeIDs() map[NodeID]struct{} {
 	v.doCurrent(
 		func(numValidations int) {
 		},
-		func(nid NodeID, v validation) {
+		func(nid NodeID, v Validation) {
 			ret[nid] = struct{}{}
 		})
 
@@ -779,7 +779,7 @@ func (v *validations) numTrustedForLedger(id LedgerID) uint {
 	v.byLedger.loop(
 		id,
 		func(i int) {}, // nothing to reserve
-		func(nid NodeID, v validation) {
+		func(nid NodeID, v Validation) {
 			if v.Trusted() && v.Full() {
 				count++
 			}
@@ -792,16 +792,16 @@ func (v *validations) numTrustedForLedger(id LedgerID) uint {
 //      @param ledgerID The identifier of ledger of interest
 //      @return Trusted validations associated with ledger
 // */
-func (v *validations) getTrustedForLedger(id LedgerID) []validation {
-	var res []validation
+func (v *validations) getTrustedForLedger(id LedgerID) []Validation {
+	var res []Validation
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	v.byLedger.loop(
 		id,
 		func(numValidations int) {
-			res = make([]validation, 0, numValidations)
+			res = make([]Validation, 0, numValidations)
 		},
-		func(nid NodeID, v validation) {
+		func(nid NodeID, v Validation) {
 			if v.Trusted() && v.Full() {
 				res = append(res, v)
 			}
@@ -825,7 +825,7 @@ func (v *validations) fees(id LedgerID, baseFee uint32) []uint32 {
 		func(numValidations int) {
 			res = make([]uint32, 0, numValidations)
 		},
-		func(nid NodeID, v validation) {
+		func(nid NodeID, v Validation) {
 			if v.Trusted() && v.Full() {
 				loadFee := v.LoadFee()
 				if loadFee > 0 {
@@ -841,12 +841,12 @@ func (v *validations) fees(id LedgerID, baseFee uint32) []uint32 {
 // /** Flush all current validations
 //  */
 func (v *validations) flush() {
-	flushed := make(map[NodeID]validation)
+	flushed := make(map[NodeID]Validation)
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	for nid, v := range v.current {
 		flushed[nid] = v
 	}
-	v.current = make(map[NodeID]validation)
+	v.current = make(map[NodeID]Validation)
 	v.adaptor.Flush(flushed)
 }
