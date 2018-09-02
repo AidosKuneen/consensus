@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// This is a rewrite of https://github.com/ripple/rippled/src/ripple/consensus
+// This is a rewrite of https://github.com/ripple/rippled/src/test/consensus
 // covered by:
 //------------------------------------------------------------------------------
 /*
@@ -41,47 +41,84 @@
 
 package consensus
 
-import "time"
+import (
+	"encoding/binary"
+	"time"
+)
 
-type agedMap map[LedgerID]*nodeVal
-
-type nodeVal struct {
-	m       map[NodeID]validation
-	touched time.Time
+type validationT struct {
+	id       LedgerID
+	seq      Seq
+	signTime time.Time
+	seenTime time.Time
+	key      [40]byte
+	nodeID   NodeID
+	trusted  bool
+	full     bool
+	loadFee  uint32
 }
 
-func (a agedMap) add(lid LedgerID, nid NodeID, v validation) {
-	if m, ok := a[lid]; ok {
-		m.m[nid] = v
-		return
+func (v *validationT) bytes() []byte {
+	bs := make([]byte, 32+8+8+8+40+32+4+1)
+	copy(bs, v.id[:])
+	binary.LittleEndian.PutUint64(bs[32:], uint64(v.seq))
+	binary.LittleEndian.PutUint64(bs[40:], uint64(v.signTime.Unix()))
+	binary.LittleEndian.PutUint64(bs[48:], uint64(v.seenTime.Unix()))
+	copy(bs[56:], v.key[:])
+	copy(bs[96:], v.nodeID[:])
+	binary.LittleEndian.PutUint32(bs[126:], v.loadFee)
+	if v.full {
+		bs[130] = 1
 	}
-	a[lid] = &nodeVal{
-		m:       make(map[NodeID]validation),
-		touched: time.Now(),
-	}
-	a[lid].m[nid] = v
+	return bs
 }
 
-func (a agedMap) expire(expire time.Duration) {
-	for k, nv := range a {
-		if nv.touched.Add(expire).After(time.Now()) {
-			delete(a, k)
-		}
-	}
+// Ledger ID associated with this validation
+func (v *validationT) LedgerID() LedgerID {
+	return v.id
 }
 
-func (nv *nodeVal) touch() {
-	nv.touched = time.Now()
+// Sequence number of validation's ledger (0 means no sequence number)
+func (v *validationT) Seq() Seq {
+	return v.seq
 }
 
-func (a agedMap) loop(id LedgerID, pre func(int), f func(NodeID, validation)) {
-	nv, ok := a[id]
-	if !ok {
-		return
-	}
-	nv.touch()
-	pre(len(nv.m))
-	for k, v := range nv.m {
-		f(k, v)
-	}
+// When the validation was signed
+func (v *validationT) SignTime() time.Time {
+	return v.signTime
+}
+
+// When the validation was first observed by this node
+func (v *validationT) SeenTime() time.Time {
+	return v.seenTime
+
+}
+
+// Whether the publishing node was Trusted at the time the validation
+// arrived
+func (v *validationT) Trusted() bool {
+	return v.trusted
+
+}
+
+// Set the validation as trusted
+func (v *validationT) SetTrusted() {
+	v.trusted = true
+
+}
+
+// Set the validation as untrusted
+func (v *validationT) SetUntrusted() {
+	v.trusted = false
+
+}
+
+// Whether this is a Full or partial validation
+func (v *validationT) Full() bool {
+	return v.full
+
+}
+
+func (v *validationT) LoadFee() uint32 {
+	return v.loadFee
 }

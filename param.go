@@ -76,10 +76,10 @@ var (
 	validationValidEarly = 3 * time.Minute
 
 	//! How long we consider a proposal fresh
-	proposeFRESHNESS = 20 * time.Second
+	proposeFreshness = 20 * time.Second
 
 	//! How often we force generating a new proposal to keep ours fresh
-	proposeINTERVAL = 12 * time.Second
+	proposeInterval = 12 * time.Second
 
 	//-------------------------------------------------------------------------
 	// Consensus durations are relative to the internal Consenus clock and use
@@ -98,7 +98,7 @@ var (
 	ledgerMinClose = 2 * time.Second
 
 	//! How often we check state or change positions
-	ledgerGRANULARITY = 1 * time.Second
+	ledgerGranularity = 1 * time.Second
 
 	/** The minimum amount of time to consider the previous round
 	  to have taken.
@@ -125,7 +125,7 @@ var (
 	avMidConsensusTime = 50
 
 	//! Percentage of nodes that most vote yes after advancing
-	avMIDConsensusPCT = 65
+	avMidConsensusPCT = 65
 
 	//! Percentage of previous round duration before we advance
 	avLateConsensusTime = 85

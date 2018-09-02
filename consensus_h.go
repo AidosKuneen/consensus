@@ -314,9 +314,9 @@ type consensus struct {
 func newConsensus(adaptor adaptor) *consensus {
 	log.Println("Creating consensus object")
 	return &consensus{
-		phase: accepted,
+		phase: phaseAccepted,
 		mode: monitoredMode{
-			mode: observing,
+			mode: modeObserving,
 		},
 		firstRound:          true,
 		closeResolution:     ledgerDefaultTimeResolution,
@@ -361,9 +361,9 @@ func (c *consensus) startRound(
 	for n := range nowUntrusted {
 		delete(c.recentPeerPositions, n)
 	}
-	startMode := observing
+	startMode := modeObserving
 	if isProposing {
-		startMode = proposing
+		startMode = modeProposing
 	}
 	// We were handed the wrong ledger
 	if prevLedger.ID() != prevLedgerID {
@@ -372,7 +372,7 @@ func (c *consensus) startRound(
 		if err != nil {
 			prevLedger = newLedger
 		} else { // Unable to acquire the correct ledger
-			startMode = wrongLedger
+			startMode = modeWrongLedger
 			log.Println("Entering consensus with: ", c.previousLedger.ID())
 			log.Println("Correct LCL is: ", prevLedgerID)
 		}
@@ -382,7 +382,7 @@ func (c *consensus) startRound(
 
 func (c *consensus) startRoundInternal(
 	now time.Time, prevLedgerID LedgerID, prevLedger ledger, mode consensusMode) {
-	c.phase = open
+	c.phase = phaseOpen
 	c.mode.set(mode, c.adaptor)
 	c.now = now
 	c.prevLedgerID = prevLedgerID
@@ -439,7 +439,7 @@ func (c *consensus) peerProposalInternal(
 	now time.Time,
 	newPeerPos peerPosition) bool {
 	// Nothing to do for now if we are currently working on a ledger
-	if c.phase == accepted {
+	if c.phase == phaseAccepted {
 		return false
 	}
 
@@ -464,11 +464,9 @@ func (c *consensus) peerProposalInternal(
 		// update current position
 		peerPosIt, ok := c.currPeerPositions[peerID]
 
-		if ok {
-			if newPeerProp.proposeSeq <=
-				peerPosIt.Proposal().proposeSeq {
-				return false
-			}
+		if ok && newPeerProp.proposeSeq <=
+			peerPosIt.Proposal().proposeSeq {
+			return false
 		}
 
 		if newPeerProp.isBowOut() {
@@ -514,10 +512,10 @@ func (c *consensus) peerProposalInternal(
 			} else {
 				log.Println("Don't have tx set for peer")
 			}
-		} else {
-			if c.result != nil {
-				c.updateDisputes(newPeerProp.nodeID, ait)
-			}
+			return true
+		}
+		if c.result != nil {
+			c.updateDisputes(newPeerProp.nodeID, ait)
 		}
 		return true
 	}
@@ -530,7 +528,7 @@ func (c *consensus) peerProposalInternal(
 
 func (c *consensus) timerEntry(now time.Time) {
 	// Nothing to do if we are currently working on a ledger
-	if c.phase == accepted {
+	if c.phase == phaseAccepted {
 		return
 	}
 
@@ -539,12 +537,12 @@ func (c *consensus) timerEntry(now time.Time) {
 	// Check we are on the proper ledger (this may change phase_)
 	c.checkLedger()
 
-	if c.phase == open {
+	if c.phase == phaseOpen {
 		c.phaseOpen()
-	} else {
-		if c.phase == establish {
-			c.phaseEstablish()
-		}
+		return
+	}
+	if c.phase == phaseEstablish {
+		c.phaseEstablish()
 	}
 }
 
@@ -555,7 +553,7 @@ func (c *consensus) timerEntry(now time.Time) {
 */
 func (c *consensus) gotTxSet(now time.Time, ts txSet) {
 	// Nothing to do if we've finished work on a ledger
-	if c.phase == accepted {
+	if c.phase == phaseAccepted {
 		return
 	}
 	c.now = now
@@ -570,23 +568,23 @@ func (c *consensus) gotTxSet(now time.Time, ts txSet) {
 
 	if c.result == nil {
 		log.Println("Not creating disputes: no position yet.")
-	} else {
-		// Our position is added to acquired_ as soon as we create it,
-		// so this txSet must differ
-		if id == c.result.position.position {
-			panic("invalid id")
+		return
+	}
+	// Our position is added to acquired_ as soon as we create it,
+	// so this txSet must differ
+	if id == c.result.position.position {
+		panic("invalid id")
+	}
+	any := false
+	for nid, pos := range c.currPeerPositions {
+		if pos.Proposal().position == id {
+			c.updateDisputes(nid, ts)
+			any = true
 		}
-		any := false
-		for nid, pos := range c.currPeerPositions {
-			if pos.Proposal().position == id {
-				c.updateDisputes(nid, ts)
-				any = true
-			}
-		}
+	}
 
-		if !any {
-			log.Println("By the time we got ", id, " no peers were proposing it")
-		}
+	if !any {
+		log.Println("By the time we got ", id, " no peers were proposing it")
 	}
 }
 
@@ -621,7 +619,7 @@ func (c *consensus) simulate(
 	c.prevProposers = uint(len(c.currPeerPositions))
 	c.result.proposers = c.prevProposers
 	c.prevRoundTime = c.result.roundTime.read()
-	c.phase = accepted
+	c.phase = phaseAccepted
 	c.adaptor.OnForceAccept(
 		c.result,
 		c.previousLedger,
@@ -668,10 +666,10 @@ func (c *consensus) handleWrongLedger(lgrID LedgerID) {
 	if err == nil {
 		log.Println("Have the consensus ledger ", c.prevLedgerID)
 		c.startRoundInternal(
-			c.now, lgrID, newLedger, switchedLedger)
-	} else {
-		c.mode.set(wrongLedger, c.adaptor)
+			c.now, lgrID, newLedger, modeSwitchedLedger)
+		return
 	}
+	c.mode.set(modeWrongLedger, c.adaptor)
 }
 
 /** Check if our previous ledger matches the network's.
@@ -692,10 +690,10 @@ func (c *consensus) checkLedger() {
 		log.Println(c.previousLedger)
 		log.Println("State on consensus change ", c)
 		c.handleWrongLedger(netLgr)
-	} else {
-		if c.previousLedger.ID() != c.prevLedgerID {
-			c.handleWrongLedger(netLgr)
-		}
+		return
+	}
+	if c.previousLedger.ID() != c.prevLedgerID {
+		c.handleWrongLedger(netLgr)
 	}
 }
 
@@ -705,10 +703,9 @@ func (c *consensus) checkLedger() {
 func (c *consensus) playbackProposals() {
 	for _, it := range c.recentPeerPositions {
 		for _, pos := range it {
-			if pos.Proposal().previousLedger == c.prevLedgerID {
-				if c.peerProposalInternal(c.now, pos) {
-					c.adaptor.SharePositoin(pos)
-				}
+			if pos.Proposal().previousLedger == c.prevLedgerID &&
+				c.peerProposalInternal(c.now, pos) {
+				c.adaptor.SharePosition(pos)
 			}
 		}
 	}
@@ -731,7 +728,7 @@ func (c *consensus) phaseOpen() {
 	// This computes how long since last ledger's close time
 	var sinceClose time.Duration
 	previousCloseCorrect :=
-		(c.mode.mode != wrongLedger) &&
+		(c.mode.mode != modeWrongLedger) &&
 			c.previousLedger.CloseAgree() &&
 			(!c.previousLedger.CloseTime().Equal(
 				(c.previousLedger.ParentCloseTime().Add(1 * time.Second))))
@@ -811,7 +808,7 @@ func (c *consensus) phaseEstablish() {
 		" participants)")
 	c.prevProposers = uint(len(c.currPeerPositions))
 	c.prevRoundTime = c.result.roundTime.read()
-	c.phase = accepted
+	c.phase = phaseAccepted
 	c.adaptor.OnAccept(
 		c.result,
 		c.previousLedger,
@@ -827,7 +824,7 @@ func (c *consensus) closeLedger() {
 		panic("result is nil")
 	}
 
-	c.phase = establish
+	c.phase = phaseEstablish
 	c.rawCloseTimes.self = c.now
 
 	c.result = c.adaptor.OnClose(c.previousLedger, c.now, c.mode.mode)
@@ -840,7 +837,7 @@ func (c *consensus) closeLedger() {
 		c.adaptor.ShareTxset(c.result.txns)
 	}
 
-	if c.mode.mode == proposing {
+	if c.mode.mode == modeProposing {
 		c.adaptor.Propose(c.result.position)
 	}
 
@@ -881,8 +878,8 @@ func (c *consensus) updateOurPositions() {
 		panic("result is nil")
 	}
 	// Compute a cutoff time
-	peerCutoff := c.now.Add(-proposeFRESHNESS)
-	ourCutoff := c.now.Add(-proposeINTERVAL)
+	peerCutoff := c.now.Add(-proposeFreshness)
+	ourCutoff := c.now.Add(-proposeInterval)
 
 	// Verify freshness of peer positions and compute close times
 	closeTimeVotes := make(map[unixTime]int)
@@ -913,7 +910,7 @@ func (c *consensus) updateOurPositions() {
 		for txid, disp := range c.result.disputes {
 			// Because the threshold for inclusion increases,
 			//  time can change our position on a dispute
-			if disp.updateVote(c.convergePercent, c.mode.mode == proposing) {
+			if disp.updateVote(c.convergePercent, c.mode.mode == modeProposing) {
 				if mutableSet != nil {
 					mutableSet = c.result.txns
 				}
@@ -942,22 +939,18 @@ func (c *consensus) updateOurPositions() {
 		consensusCloseTime = c.asCloseTime(c.result.position.closeTime)
 	} else {
 		neededWeight := 0
-
-		if c.convergePercent < avMidConsensusTime {
+		switch {
+		case c.convergePercent < avMidConsensusTime:
 			neededWeight = avInitConsensusPCT
-		} else {
-			if c.convergePercent < avLateConsensusTime {
-				neededWeight = avMIDConsensusPCT
-			} else {
-				if c.convergePercent < avStuckConsensusTime {
-					neededWeight = avLateConsensusPCT
-				} else {
-					neededWeight = avStuckConsensusPCT
-				}
-			}
+		case c.convergePercent < avLateConsensusTime:
+			neededWeight = avMidConsensusPCT
+		case c.convergePercent < avStuckConsensusTime:
+			neededWeight = avLateConsensusPCT
+		default:
+			neededWeight = avStuckConsensusPCT
 		}
 		participants := len(c.currPeerPositions)
-		if c.mode.mode == proposing {
+		if c.mode.mode == modeProposing {
 			closeTimeVotes[unixTime(c.asCloseTime(c.result.position.closeTime).Unix())]++
 			participants++
 		}
@@ -974,11 +967,8 @@ func (c *consensus) updateOurPositions() {
 			" thrC:", threshConsensus)
 
 		for tim, cnt := range closeTimeVotes {
-			log.Println(
-				"CCTime: seq ",
-				c.previousLedger.Seq()+1, ": ",
-				tim, " has ", cnt,
-				", ", threshVote, " required")
+			log.Println("CCTime: seq ", c.previousLedger.Seq()+1, ": ",
+				tim, " has ", cnt, ", ", threshVote, " required")
 
 			if cnt >= threshVote {
 				// A close time has enough votes for us to try to agree
@@ -1037,7 +1027,7 @@ func (c *consensus) updateOurPositions() {
 
 		// Share our new position if we are still participating this round
 		if !c.result.position.isBowOut() &&
-			(c.mode.mode == proposing) {
+			(c.mode.mode == modeProposing) {
 			c.adaptor.Propose(c.result.position)
 		}
 	}
@@ -1078,16 +1068,16 @@ func (c *consensus) haveConsensus() bool {
 		currentFinished,
 		c.prevRoundTime,
 		c.result.roundTime.read(),
-		c.mode.mode == proposing,
+		c.mode.mode == modeProposing,
 	)
 
-	if c.result.state == no {
+	if c.result.state == stateNo {
 		return false
 	}
 
 	// There is consensus, but we need to track if the network moved on
 	// without us.
-	if c.result.state == movedOn {
+	if c.result.state == stateMovedOn {
 		log.Println("Unable to reach consensus")
 		log.Println(c)
 	}
@@ -1098,13 +1088,13 @@ func (c *consensus) haveConsensus() bool {
 // Revoke our outstanding proposal, if any, and cease proposing
 // until this round ends.
 func (c *consensus) leaveConsensus() {
-	if c.mode.mode == proposing {
+	if c.mode.mode == modeProposing {
 		if c.result != nil && !c.result.position.isBowOut() {
 			c.result.position.bowOut(c.now)
 			c.adaptor.Propose(c.result.position)
 		}
 
-		c.mode.set(observing, c.adaptor)
+		c.mode.set(modeObserving, c.adaptor)
 		log.Println("Bowing out of consensus")
 	}
 }
@@ -1168,7 +1158,6 @@ func (c *consensus) createDisputes(o txSet) {
 			}
 		}
 		c.adaptor.ShareTx(dtx.tx)
-
 		c.result.disputes[txID] = dtx
 	}
 	log.Println(dc, " differences found")

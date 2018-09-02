@@ -77,6 +77,7 @@ func newDisputedTx(tr txT, ourVote bool, numPeers uint) *disputedTx {
 
 func (dtx *disputedTx) setVote(peer NodeID, votesYes bool) {
 	res, exist := dtx.votes[peer]
+	dtx.votes[peer] = votesYes
 
 	// new vote
 	switch {
@@ -93,13 +94,11 @@ func (dtx *disputedTx) setVote(peer NodeID, votesYes bool) {
 		log.Println("Peer ", peer, "now votes YES on ", dtx.tx.ID())
 		dtx.nays--
 		dtx.yays++
-		dtx.votes[peer] = votesYes
 		// changes vote to no
 	case !votesYes && res:
 		log.Println("Peer ", peer, "now votes NO on ", dtx.tx.ID())
 		dtx.nays++
 		dtx.yays--
-		dtx.votes[peer] = votesYes
 	}
 }
 
@@ -139,7 +138,7 @@ func (dtx *disputedTx) updateVote(percentTime int, proposing bool) bool {
 		case percentTime < avMidConsensusTime:
 			newPosition = weight > avInitConsensusPCT
 		case percentTime < avLateConsensusTime:
-			newPosition = weight > avMIDConsensusPCT
+			newPosition = weight > avMidConsensusPCT
 		case percentTime < avStuckConsensusTime:
 			newPosition = weight > avLateConsensusPCT
 		default:

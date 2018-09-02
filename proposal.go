@@ -69,9 +69,9 @@ import "time"
 
 const (
 	//< Sequence value when a peer initially joins consensus
-	seqJoin = 0
+	seqJoin Seq = 0
 	//< Sequence number when  a peer wants to bow out and leave consensus
-	seqLeave = 0xffffffff
+	seqLeave Seq = 0xffffffff
 )
 
 type consensusProposal struct {
@@ -161,5 +161,5 @@ func (p *consensusProposal) bowOut(now time.Time) {
 func (p *consensusProposal) equals(p2 *consensusProposal) bool {
 	return p.nodeID == p2.nodeID && p.proposeSeq == p2.proposeSeq &&
 		p.previousLedger == p2.previousLedger && p.position == p2.position &&
-		p.closeTime == p2.closeTime && p.seenTime == p2.seenTime
+		p.closeTime.Equal(p2.closeTime) && p.seenTime.Equal(p2.seenTime)
 }

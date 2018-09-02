@@ -163,7 +163,7 @@ func checkConsensus(
 		previousAgreeTime)
 
 	if currentAgreeTime <= ledgerMinConsensus {
-		return no
+		return stateNo
 	}
 
 	if currentProposers < (prevProposers * 3 / 4) {
@@ -171,7 +171,7 @@ func checkConsensus(
 		// rush: we may need more time.
 		if currentAgreeTime < (previousAgreeTime + ledgerMinConsensus) {
 			log.Println("too fast, not enough proposers")
-			return no
+			return stateNo
 		}
 	}
 
@@ -180,7 +180,7 @@ func checkConsensus(
 	if checkConsensusReached(
 		currentAgree, currentProposers, proposing, minConsensusPCT) {
 		log.Println("normal consensus")
-		return yes
+		return stateYes
 	}
 
 	// Have sufficient nodes on our UNL list moved on and reached the threshold
@@ -188,10 +188,10 @@ func checkConsensus(
 	if checkConsensusReached(
 		currentFinished, currentProposers, false, minConsensusPCT) {
 		log.Println("We see no consensus, but 80% of nodes have moved on")
-		return movedOn
+		return stateMovedOn
 	}
 
 	// no consensus yet
 	log.Println("no consensus")
-	return no
+	return stateNo
 }

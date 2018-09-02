@@ -74,27 +74,27 @@ type consensusMode byte
 
 const (
 	//! We are normal participant in consensus and propose our position
-	proposing consensusMode = iota
-	//! We are observing peer positions, but not proposing our position
-	observing
+	modeProposing consensusMode = iota
+	//! We are modeObserving peer positions, but not proposing our position
+	modeObserving
 	//! We have the wrong ledger and are attempting to acquire it
-	wrongLedger
+	modeWrongLedger
 	//! We switched ledgers since we started this consensus round but are now
 	//! running on what we believe is the correct ledger.  This mode is as
 	//! if we entered the round observing, but is used to indicate we did
 	//! have the wrongLedger at some point.
-	switchedLedger
+	modeSwitchedLedger
 )
 
 func (m consensusMode) String() string {
 	switch m {
-	case proposing:
+	case modeProposing:
 		return "proposing"
-	case observing:
+	case modeObserving:
 		return "observing"
-	case wrongLedger:
+	case modeWrongLedger:
 		return "wrongLedger"
-	case switchedLedger:
+	case modeSwitchedLedger:
 		return "switchedLedger"
 	default:
 		return "unknown"
@@ -121,24 +121,24 @@ type consensusPhase byte
 */
 const (
 	//! We haven't closed our ledger yet, but others might have
-	open consensusPhase = iota
+	phaseOpen consensusPhase = iota
 
 	//! Establishing consensus by exchanging proposals with our peers
-	establish
+	phaseEstablish
 
 	//! We have accepted a new last closed ledger and are waiting on a call
 	//! to startRound to begin the next consensus round.  No changes
 	//! to consensus phase occur while in this phase.
-	accepted
+	phaseAccepted
 )
 
 func (p consensusPhase) String() string {
 	switch p {
-	case open:
+	case phaseOpen:
 		return "open"
-	case establish:
+	case phaseEstablish:
 		return "establish"
-	case accepted:
+	case phaseAccepted:
 		return "accepted"
 	default:
 		return "unknown"
@@ -191,9 +191,9 @@ func newConsensusCloseTimes() *consensusCloseTimes {
 type consensusState byte
 
 const (
-	no      consensusState = iota //!< We do not have consensus
-	movedOn                       //!< The network has consensus without us
-	yes                           //!< We have consensus along with the network
+	stateNo      consensusState = iota //!< We do not have consensus
+	stateMovedOn                       //!< The network has consensus without us
+	stateYes                           //!< We have consensus along with the network
 )
 
 /** Encapsulates the result of consensus.
@@ -235,7 +235,7 @@ func newConsensusResult(txns txSet, pos consensusProposal) *consensusResult {
 	return &consensusResult{
 		txns:     txns,
 		position: pos,
-		state:    no,
+		state:    stateNo,
 		disputes: make(map[TxID]*disputedTx),
 		compares: make(map[TxSetID]txSet),
 	}

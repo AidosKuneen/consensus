@@ -62,6 +62,8 @@ type LedgerID [32]byte
 //Seq is a sequence no.
 type Seq uint64
 
+type seqLedgerID [8 + 32]byte
+
 // A single transaction
 type txT interface {
 	ID() TxID
@@ -76,7 +78,8 @@ type txSet interface {
 
 	// Return set of transactions that are not common to this set or other
 	// boolean indicates which set it was in
-	Compare(txSet) map[TxID]bool
+	// If true I have the tx, otherwiwse o has it.
+	Compare(o txSet) map[TxID]bool
 	Insert(txT) bool
 	Erase(TxID) bool
 }
@@ -91,8 +94,6 @@ type ledger interface {
 	CloseTime() time.Time
 	ParentCloseTime() time.Time
 	IndexOf(Seq) LedgerID
-	MakeGenesis() ledger
-	Equals(ledger) bool
 }
 
 // Wraps a peer's ConsensusProposal
@@ -141,7 +142,7 @@ type adaptor interface {
 	Propose(consensusProposal)
 
 	// Share a received peer proposal with other peer's.
-	SharePositoin(peerPosition)
+	SharePosition(peerPosition)
 
 	// Share a disputed transaction with peers
 	ShareTx(txT)
@@ -159,9 +160,6 @@ type adaptor interface {
 
 	// Return the current network time (used to determine staleness)
 	Now() time.Time
-
-	// Attempt to Acquire a specific ledger.
-	Acquire(LedgerID) ledger
 }
 
 type validation interface {

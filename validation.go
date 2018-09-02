@@ -43,8 +43,7 @@ package consensus
 
 import (
 	"bytes"
-	"errors"
-	"math"
+	"log"
 	"sync"
 	"time"
 )
@@ -63,7 +62,7 @@ var (
 	  This is a safety to protect against very old validations and the time
 	  it takes to adjust the close time accuracy window.
 	*/
-	validationCURRENTWALL = 5 * time.Minute
+	validationCurrentWall = 5 * time.Minute
 
 	/** Duration a validation remains current after first observed.
 
@@ -71,14 +70,14 @@ var (
 	  first saw it. This provides faster recovery in very rare cases where the
 	  number of validations produced by the network is lower than normal
 	*/
-	validationCURRENTLOCAL = 3 * time.Minute
+	validationCurrentLocal = 3 * time.Minute
 
 	/** Duration pre-close in which validations are acceptable.
 
 	  The number of seconds before a close time that we consider a validation
 	  acceptable. This protects against extreme clock errors
 	*/
-	validationCURRENTEARLY = 3 * time.Minute
+	validationCurrentEarly = 3 * time.Minute
 
 	/** Duration a set of validations for a given ledger hash remain valid
 
@@ -86,7 +85,7 @@ var (
 	  hash can expire.  This keeps validations for recent ledgers available
 	  for a reasonable interval.
 	*/
-	validationSETEXPIRES = 10 * time.Minute
+	validationSetExpires = 10 * time.Minute
 )
 
 /** Enforce validation increasing sequence requirement.
@@ -113,7 +112,7 @@ type seqEnforcer struct {
   @return Whether the validation satisfies the invariant
 */
 func (sf *seqEnforcer) do(now time.Time, s Seq) bool {
-	if now.After(sf.when.Add(validationSETEXPIRES)) {
+	if now.After(sf.when.Add(validationSetExpires)) {
 		sf.largest = 0
 	}
 	if s <= sf.largest {
@@ -141,11 +140,11 @@ func isCurrent(now, signTime, seenTime time.Time) bool {
 	// malicious validations, we do our math in a way
 	// that avoids any chance of overflowing or underflowing
 	// the signing time.
-
-	return signTime.After(now.Add(-validationCURRENTEARLY)) &&
-		signTime.Before(now.Add(validationCURRENTWALL)) &&
+	return signTime.After(now.Add(-validationCurrentEarly)) &&
+		signTime.Before(now.Add(validationCurrentWall)) &&
 		(seenTime.IsZero() ||
-			seenTime.Before(now.Add(validationCURRENTLOCAL)))
+			seenTime.Before(now.Add(validationCurrentLocal)) &&
+				seenTime.After(now.Add(-validationCurrentLocal))) //added from original
 }
 
 /** Status of newly received validation */
@@ -160,7 +159,7 @@ const (
 	badSeq
 )
 
-func (m valStatus) string() string {
+func (m valStatus) String() string {
 	switch m {
 	case current:
 		return "current"
@@ -291,7 +290,7 @@ type validations struct {
 	lastLedger map[NodeID]ledger
 
 	// Set of ledgers being acquired from the network
-	acquiring map[Seq]map[LedgerID]map[NodeID]struct{}
+	acquiring map[seqLedgerID]map[NodeID]struct{}
 
 	// Adaptor instance
 	// Is NOT managed by the mutex_ above
@@ -299,12 +298,11 @@ type validations struct {
 }
 
 func (v *validations) removeTrie(nodeID NodeID, val validation) {
-	if a1, ok := v.acquiring[val.Seq()]; ok {
-		if a2, ok := a1[val.LedgerID()]; ok {
-			delete(a2, nodeID)
-			if len(a2) == 0 {
-				delete(v.acquiring, val.Seq())
-			}
+	slid := toSeqLedgerID(val.Seq(), val.LedgerID())
+	if a, ok := v.acquiring[slid]; ok {
+		delete(a, nodeID)
+		if len(a) == 0 {
+			delete(v.acquiring, slid)
 		}
 	}
 	it, ok := v.lastLedger[nodeID]
@@ -316,28 +314,27 @@ func (v *validations) removeTrie(nodeID NodeID, val validation) {
 
 // Check if any pending acquire ledger requests are complete
 func (v *validations) checkAcquired() {
-	for it, m := range v.acquiring {
-		for lid, nids := range m {
-			l, err := v.adaptor.AcquireLedger(lid)
-			if err != nil {
-				continue
-			}
-			for nid := range nids {
-				v.updateTrie(nid, l)
-			}
-			delete(v.acquiring, it)
+	for sli, m := range v.acquiring {
+		_, lid := fromSeqLedgerID(sli)
+		l, err := v.adaptor.AcquireLedger(lid)
+		if err != nil {
+			continue
 		}
+		for nid := range m {
+			v.updateTrie(nid, l)
+		}
+		delete(v.acquiring, sli)
 	}
 }
 
 // Update the trie to reflect a new validated ledger
-func (v *validations) updateTrie(nodeID NodeID, l ledger) error {
+func (v *validations) updateTrie(nodeID NodeID, l ledger) {
 	oldl, ok := v.lastLedger[nodeID]
 	v.lastLedger[nodeID] = l
 	if ok {
 		v.trie.remove(oldl, 1)
 	}
-	return v.trie.insert(l, 1)
+	v.trie.insert(l, 1)
 }
 
 /** Process a new validation
@@ -353,40 +350,37 @@ func (v *validations) updateTrie(nodeID NodeID, l ledger) error {
   @param prior If not none, the last current validated ledger Seq,ID of key
 */
 func (v *validations) updateTrie2(
-	nodeID NodeID, val validation, seq Seq, id LedgerID) error {
-	if !val.Trusted() {
-		return errors.New("validator is not trusted")
-	}
-
+	nodeID NodeID, val validation, seq Seq, id LedgerID) {
 	// Clear any prior acquiring ledger for this node
-	if seq != math.MaxUint64 {
-		if it, ok := v.acquiring[seq]; ok {
-			if it2, ok := it[id]; ok {
-				delete(it2, nodeID)
-				if len(it2) == 0 {
-					delete(it, id)
-				}
-			}
+	slid := toSeqLedgerID(seq, id)
+	if it, ok := v.acquiring[slid]; ok {
+		delete(it, nodeID)
+		if len(it) == 0 {
+			delete(v.acquiring, slid)
 		}
 	}
+	v.updateTrie3(nodeID, val)
+}
 
+func (v *validations) updateTrie3(nodeID NodeID, val validation) {
+	if !val.Trusted() {
+		panic("validator is not trusted")
+	}
 	v.checkAcquired()
 
-	if it, ok := v.acquiring[val.Seq()]; ok {
-		if it2, ok := it[val.LedgerID()]; ok {
-			it2[nodeID] = struct{}{}
-		} else {
-			ll, err := v.adaptor.AcquireLedger(val.LedgerID())
-			if err == nil {
-				if err := v.updateTrie(nodeID, ll); err != nil {
-					return err
-				}
-			} else {
-				v.acquiring[val.Seq()][val.LedgerID()][nodeID] = struct{}{}
-			}
+	slid := toSeqLedgerID(val.Seq(), val.LedgerID())
+	if it, ok := v.acquiring[slid]; ok {
+		it[nodeID] = struct{}{}
+		return
+	}
+	ll, err := v.adaptor.AcquireLedger(val.LedgerID())
+	if err == nil {
+		v.updateTrie(nodeID, ll)
+	} else {
+		v.acquiring[slid] = map[NodeID]struct{}{
+			nodeID: struct{}{},
 		}
 	}
-	return nil
 }
 
 /** Use the trie for a calculation
@@ -429,11 +423,11 @@ func (v *validations) doCurrent(pre func(int), f func(NodeID, validation)) {
 	pre(len(v.current))
 	for k, val := range v.current {
 		// Check for staleness
-		if !isCurrent(
-			t, val.SignTime(), val.SeenTime()) {
+		if !isCurrent(t, val.SignTime(), val.SeenTime()) {
 			v.removeTrie(k, val)
 			v.adaptor.OnStale(val)
 			delete(v.current, k)
+			log.Println("and staled")
 		} else {
 			// contains a live record
 			f(k, val)
@@ -470,7 +464,8 @@ func newValidations(a adaptor) *validations {
 		current:      make(map[NodeID]validation),
 		seqEnforcers: make(map[NodeID]seqEnforcer),
 		lastLedger:   make(map[NodeID]ledger),
-		acquiring:    make(map[Seq]map[LedgerID]map[NodeID]struct{}),
+		acquiring:    make(map[seqLedgerID]map[NodeID]struct{}),
+		trie:         newLedgerTrie(),
 	}
 }
 
@@ -509,24 +504,24 @@ func (v *validations) add(nodeID NodeID, val validation) valStatus {
 	if !enforcer.do(now, val.Seq()) {
 		return badSeq
 	}
+	v.seqEnforcers[nodeID] = enforcer
 	// Use insert_or_assign when C++17 supported
 	v.byLedger.add(val.LedgerID(), nodeID, val)
 	oldVal, ok := v.current[nodeID]
-	v.current[nodeID] = val
-	if ok {
-		// Replace existing only if this one is newer
-		if val.SignTime().After(oldVal.SignTime()) {
-			v.adaptor.OnStale(oldVal)
-			if val.Trusted() {
-				v.updateTrie2(nodeID, val, oldVal.Seq(), oldVal.LedgerID())
-			} else {
-				return stale
-			}
-		} else {
-			if val.Trusted() {
-				v.updateTrie2(nodeID, val, math.MaxUint64, zeroID)
-			}
+	if !ok {
+		v.current[nodeID] = val
+		if val.Trusted() {
+			v.updateTrie3(nodeID, val)
 		}
+		return current
+	}
+	if !val.SignTime().After(oldVal.SignTime()) {
+		return stale
+	}
+	v.adaptor.OnStale(oldVal)
+	v.current[nodeID] = val
+	if val.Trusted() {
+		v.updateTrie2(nodeID, val, oldVal.Seq(), oldVal.LedgerID())
 	}
 	return current
 }
@@ -539,7 +534,7 @@ func (v *validations) add(nodeID NodeID, val validation) valStatus {
 func (v *validations) expire() {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
-	v.byLedger.expire(validationSETEXPIRES)
+	v.byLedger.expire(validationSetExpires)
 }
 
 /** Update trust status of validations
@@ -558,22 +553,22 @@ func (v *validations) trustChanged(added, removed map[NodeID]struct{}) {
 	for id, val := range v.current {
 		if _, ok := added[id]; ok {
 			val.SetTrusted()
-			v.updateTrie2(id, val, math.MaxUint64, zeroID)
-		} else {
-			if _, ok := removed[id]; ok {
-				val.SetUntrusted()
-				v.removeTrie(id, val)
-			}
+			v.updateTrie3(id, val)
+			continue
+		}
+		if _, ok := removed[id]; ok {
+			val.SetUntrusted()
+			v.removeTrie(id, val)
 		}
 	}
 	for _, val := range v.byLedger {
 		for nodeVal, val2 := range val.m {
 			if _, ok := added[nodeVal]; ok {
 				val2.SetTrusted()
-			} else {
-				if _, ok := removed[nodeVal]; ok {
-					val2.SetUntrusted()
-				}
+				continue
+			}
+			if _, ok := removed[nodeVal]; ok {
+				val2.SetUntrusted()
 			}
 		}
 	}
@@ -595,26 +590,24 @@ func (v *validations) getPreferred(curr ledger) (Seq, LedgerID, error) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	var preferred *spanTip
-	var err error
 	v.withTrie(func(trie *ledgerTrie) {
-		preferred, err = trie.getPreferred(v.localSeqEnforcer.largest)
+		preferred = trie.getPreferred(v.localSeqEnforcer.largest)
 	})
-	if err != nil {
-		return 0, zeroID, err
-	}
 
 	// No trusted validations to determine branch
 	if preferred.seq == 0 {
+		// fall back to majority over acquiring ledgers
 		var maxseq Seq
 		var maxid LedgerID
 		var size int
-		for s, ln := range v.acquiring {
-			for l, n := range ln {
-				if size < len(n) || (size == len(n) && bytes.Compare(maxid[:], l[:]) < 0) {
-					maxseq = s
-					maxid = l
-					size = len(n)
-				}
+		for slid, m := range v.acquiring {
+			s, lid := fromSeqLedgerID(slid)
+			// order by number of trusted peers validating that ledger
+			// break ties with ledger ID
+			if size < len(m) || (size == len(m) && bytes.Compare(maxid[:], lid[:]) < 0) {
+				maxseq = s
+				maxid = lid
+				size = len(m)
 			}
 		}
 		if len(v.acquiring) != 0 {
@@ -729,8 +722,7 @@ func (v *validations) getNodesAfter(l ledger, id LedgerID) uint32 {
 	var num uint32
 	if l.ID() == id {
 		v.withTrie(func(trie *ledgerTrie) {
-			n := trie.branchSupport(l)
-			num = -n
+			num = trie.branchSupport(l) - trie.tipSupport(l)
 		})
 		return num
 	}
