@@ -147,16 +147,13 @@ func roundCloseTime(
 	return closeTime.Round(closeResolution)
 }
 
-/** Calculate the effective ledger close time
-
-  After adjusting the ledger close time based on the current resolution, also
-  ensure it is sufficiently separated from the prior close time.
-
-  @param closeTime The raw ledger close time
-  @param resolution The current close time resolution
-  @param priorCloseTime The close time of the prior ledger
-*/
-func effCloseTime(
+//EffCloseTime calculate the effective ledger close time
+//   After adjusting the ledger close time based on the current resolution, also
+//   ensure it is sufficiently separated from the prior close time.
+//   @param closeTime The raw ledger close time
+//   @param resolution The current close time resolution
+//   @param priorCloseTime The close time of the prior ledger
+func EffCloseTime(
 	closeTime time.Time,
 	resolution time.Duration,
 	priorCloseTime time.Time) time.Time {

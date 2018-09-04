@@ -130,23 +130,23 @@ func TestRoundCloseTime(t *testing.T) {
 }
 
 func TestEffCloseTime(t *testing.T) {
-	close := effCloseTime(time.Unix(10, 0), 30*time.Second, time.Unix(0, 0))
+	close := EffCloseTime(time.Unix(10, 0), 30*time.Second, time.Unix(0, 0))
 	if !close.Equal(time.Unix(1, 0)) {
 		t.Error("invalid effclosetime", close.Unix())
 	}
-	close = effCloseTime(time.Unix(16, 0), 30*time.Second, time.Unix(0, 0))
+	close = EffCloseTime(time.Unix(16, 0), 30*time.Second, time.Unix(0, 0))
 	if !close.Equal(time.Unix(30, 0)) {
 		t.Error("invalid effclosetime")
 	}
-	close = effCloseTime(time.Unix(16, 0), 30*time.Second, time.Unix(30, 0))
+	close = EffCloseTime(time.Unix(16, 0), 30*time.Second, time.Unix(30, 0))
 	if !close.Equal(time.Unix(31, 0)) {
 		t.Error("invalid effclosetime")
 	}
-	close = effCloseTime(time.Unix(16, 0), 30*time.Second, time.Unix(60, 0))
+	close = EffCloseTime(time.Unix(16, 0), 30*time.Second, time.Unix(60, 0))
 	if !close.Equal(time.Unix(61, 0)) {
 		t.Error("invalid effclosetime")
 	}
-	close = effCloseTime(time.Unix(31, 0), 30*time.Second, time.Unix(0, 0))
+	close = EffCloseTime(time.Unix(31, 0), 30*time.Second, time.Unix(0, 0))
 	if !close.Equal(time.Unix(30, 0)) {
 		t.Error("invalid effclosetime")
 	}

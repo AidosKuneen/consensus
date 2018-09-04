@@ -43,9 +43,6 @@ package consensus
 
 import "log"
 
-//mapT is from NodeID to vote
-type mapT map[NodeID]bool
-
 // DisputedTx is A transaction discovered to be in dispute during conensus.
 //   During consensus, a @ref DisputedTx is created when a transaction
 //   is discovered to be disputed. The object persists only as long as
@@ -55,18 +52,18 @@ type mapT map[NodeID]bool
 //   @tparam Tx_t The type for a transaction
 //   @tparam NodeID_t The type for a node identifier
 type DisputedTx struct {
-	Yays    int  //< Number of yes votes
-	Nays    int  //< Number of no votes
-	OurVote bool //< Our vote (true is yes)
-	Tx      TxT  //< Transaction under dispute
-	Votes   mapT //< Map from NodeID to vote
+	Yays    int             //< Number of yes votes
+	Nays    int             //< Number of no votes
+	OurVote bool            //< Our vote (true is yes)
+	Tx      TxT             //< Transaction under dispute
+	Votes   map[NodeID]bool //< Map from NodeID to vote
 }
 
 func newDisputedTx(tr TxT, ourVote bool, numPeers uint) *DisputedTx {
 	return &DisputedTx{
 		OurVote: ourVote,
 		Tx:      tr,
-		Votes:   make(mapT),
+		Votes:   make(map[NodeID]bool),
 	}
 }
 

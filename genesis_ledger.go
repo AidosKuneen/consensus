@@ -47,7 +47,8 @@ import (
 
 var genesisID [32]byte
 
-var genesisLedger = &genesisLedgerT{}
+//GenesisLedger is the genesis.
+var GenesisLedger = &genesisLedgerT{}
 
 type genesisLedgerT struct {
 }

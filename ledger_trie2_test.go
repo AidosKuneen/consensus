@@ -400,13 +400,13 @@ func TestGetPreferred10(t *testing.T) {
 func TestRootRelated(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
-	if lt.remove(genesisLedger, 1) {
+	if lt.remove(GenesisLedger, 1) {
 		t.Error("invalid removal")
 	}
-	if lt.branchSupport(genesisLedger) != 0 {
+	if lt.branchSupport(GenesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(genesisLedger) != 0 {
+	if lt.tipSupport(GenesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
 
@@ -415,10 +415,10 @@ func TestRootRelated(t *testing.T) {
 	if err := lt.checkInvariants(); err != nil {
 		t.Error(err)
 	}
-	if lt.branchSupport(genesisLedger) != 1 {
+	if lt.branchSupport(GenesisLedger) != 1 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(genesisLedger) != 0 {
+	if lt.tipSupport(GenesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
 
@@ -427,10 +427,10 @@ func TestRootRelated(t *testing.T) {
 	if err := lt.checkInvariants(); err != nil {
 		t.Error(err)
 	}
-	if lt.branchSupport(genesisLedger) != 2 {
+	if lt.branchSupport(GenesisLedger) != 2 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(genesisLedger) != 0 {
+	if lt.tipSupport(GenesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
 
@@ -440,10 +440,10 @@ func TestRootRelated(t *testing.T) {
 	if err := lt.checkInvariants(); err != nil {
 		t.Error(err)
 	}
-	if lt.branchSupport(genesisLedger) != 1 {
+	if lt.branchSupport(GenesisLedger) != 1 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(genesisLedger) != 0 {
+	if lt.tipSupport(GenesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
 }
@@ -473,7 +473,7 @@ func TestStress(t *testing.T) {
 		}
 		var tl Ledger
 		if curr == "" {
-			tl = genesisLedger
+			tl = GenesisLedger
 		} else {
 			tl = newLedger(curr)
 		}

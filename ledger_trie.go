@@ -82,7 +82,7 @@ type span struct {
 }
 
 func newSpan() *span {
-	return newSpanFromLedger(genesisLedger)
+	return newSpanFromLedger(GenesisLedger)
 }
 
 func newSpanFromLedger(l Ledger) *span {
@@ -191,7 +191,7 @@ type node struct {
 
 func newNode() *node {
 	return &node{
-		span: newSpanFromLedger(genesisLedger),
+		span: newSpanFromLedger(GenesisLedger),
 	}
 }
 

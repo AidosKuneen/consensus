@@ -88,30 +88,24 @@ var (
 	validationSetExpires = 10 * time.Minute
 )
 
-/** Enforce validation increasing sequence requirement.
-
-  Helper class for enforcing that a validation must be larger than all
-  unexpired validation sequence numbers previously issued by the validator
-  tracked by the instance of this class.
-*/
-type seqEnforcer struct {
+// SeqEnforcer enforce validation increasing sequence requirement.
+//   Helper class for enforcing that a validation must be larger than all
+//   unexpired validation sequence numbers previously issued by the validator
+//   tracked by the instance of this class.
+type SeqEnforcer struct {
 	largest Seq
 	when    time.Time
 }
 
-/** Try advancing the largest observed validation ledger sequence
-
-  Try setting the largest validation sequence observed, but return false
-  if it violates the invariant that a validation must be larger than all
-  unexpired validation sequence numbers.
-
-  @param now The current time
-  @param s The sequence number we want to validate
-  @param p Validation parameters
-
-  @return Whether the validation satisfies the invariant
-*/
-func (sf *seqEnforcer) do(now time.Time, s Seq) bool {
+// Try advancing the largest observed validation ledger sequence
+//   Try setting the largest validation sequence observed, but return false
+//   if it violates the invariant that a validation must be larger than all
+//   unexpired validation sequence numbers.
+//   @param now The current time
+//   @param s The sequence number we want to validate
+//   @param p Validation parameters
+//   @return Whether the validation satisfies the invariant
+func (sf *SeqEnforcer) Try(now time.Time, s Seq) bool {
 	if now.After(sf.when.Add(validationSetExpires)) {
 		sf.largest = 0
 	}
@@ -147,126 +141,46 @@ func isCurrent(now, signTime, seenTime time.Time) bool {
 				seenTime.After(now.Add(-validationCurrentLocal))) //added from original
 }
 
-/** Status of newly received validation */
-type valStatus byte
+//ValStatus is status of newly received validation
+type ValStatus byte
 
 const (
-	/// This was a new validation and was added
-	current valStatus = iota
-	/// Not current or was older than current from this node
-	stale
-	/// A validation violates the increasing seq requirement
-	badSeq
+	//VstatCurrent means this was a new validation and was added
+	VstatCurrent ValStatus = iota
+	//VstatStale means not current or was older than current from this node
+	VstatStale
+	//VstatBadSeq means a validation violates the increasing seq requirement
+	VstatBadSeq
 )
 
-func (m valStatus) String() string {
+func (m ValStatus) String() string {
 	switch m {
-	case current:
+	case VstatCurrent:
 		return "current"
-	case stale:
+	case VstatStale:
 		return "stale"
-	case badSeq:
+	case VstatBadSeq:
 		return "badSeq"
 	default:
 		return "unknown"
 	}
 }
 
-/** Maintains current and recent ledger validations.
-
-  Manages storage and queries related to validations received on the network.
-  Stores the most current validation from nodes and sets of recent
-  validations grouped by ledger identifier.
-
-  Stored validations are not necessarily from trusted nodes, so clients
-  and implementations should take care to use `trusted` member functions or
-  check the validation's trusted status.
-
-  This class uses a generic interface to allow adapting Validations for
-  specific applications. The Adaptor template implements a set of helper
-  functions and type definitions. The code stubs below outline the
-  interface and type requirements.
-
-
-  @warning The Adaptor::MutexType is used to manage concurrent access to
-           private members of Validations but does not manage any data in the
-           Adaptor instance itself.
-
-  @code
-
-  // Conforms to the Ledger type requirements of LedgerTrie
-  struct Ledger;
-
-  struct Validation
-  {
-      using NodeID = ...;
-      using NodeKey = ...;
-
-      // Ledger ID associated with this validation
-      Ledger::ID ledgerID() const;
-
-      // Sequence number of validation's ledger (0 means no sequence number)
-      Ledger::Seq seq() const
-
-      // When the validation was signed
-      NetClock::time_point signTime() const;
-
-      // When the validation was first observed by this node
-      NetClock::time_point seenTime() const;
-
-      // Signing key of node that published the validation
-      NodeKey key() const;
-
-      // Whether the publishing node was trusted at the time the validation
-      // arrived
-      bool trusted() const;
-
-      // Set the validation as trusted
-      void setTrusted();
-
-      // Set the validation as untrusted
-      void setUntrusted();
-
-      // Whether this is a full or partial validation
-      bool full() const;
-
-      // Identifier for this node that remains fixed even when rotating signing
-      // keys
-      NodeID nodeID()  const;
-
-      implementation_specific_t
-      unwrap() . return the implementation-specific type being wrapped
-
-      // ... implementation specific
-  };
-
-  class Adaptor
-  {
-      using Mutex = std::mutex;
-      using Validation = Validation;
-      using Ledger = Ledger;
-
-      // Handle a newly stale validation, this should do minimal work since
-      // it is called by Validations while it may be iterating Validations
-      // under lock
-      void onStale(Validation && );
-
-      // Flush the remaining validations (typically done on shutdown)
-      void flush(hash_map<NodeID,Validation> && remaining);
-
-      // Return the current network time (used to determine staleness)
-      NetClock::time_point now() const;
-
-      // Attempt to acquire a specific ledger.
-      boost::optional<Ledger> acquire(Ledger::ID const & ledgerID);
-
-      // ... implementation specific
-  };
-  @endcode
-
-  @tparam Adaptor Provides type definitions and callbacks
-*/
-type validations struct {
+// Validations maintains current and recent ledger Validations.
+//   Manages storage and queries related to Validations received on the network.
+//   Stores the most current validation from nodes and sets of recent
+//   Validations grouped by ledger identifier.
+//   Stored Validations are not necessarily from trusted nodes, so clients
+//   and implementations should take care to use `trusted` member functions or
+//   check the validation's trusted status.
+//   This class uses a generic interface to allow adapting Validations for
+//   specific applications. The Adaptor template implements a set of helper
+//   functions and type definitions. The code stubs below outline the
+//   interface and type requirements.
+//   @warning The Adaptor::MutexType is used to manage concurrent access to
+//            private members of Validations but does not manage any data in the
+// 		   Adaptor instance itself.
+type Validations struct {
 	// Manages concurrent access to members
 	mutex sync.Mutex
 
@@ -274,10 +188,10 @@ type validations struct {
 	current map[NodeID]Validation
 
 	// Used to enforce the largest validation invariant for the local node
-	localSeqEnforcer seqEnforcer
+	localSeqEnforcer SeqEnforcer
 
 	// Sequence of the largest validation received from each node
-	seqEnforcers map[NodeID]seqEnforcer
+	seqEnforcers map[NodeID]SeqEnforcer
 
 	//! Validations from listed nodes, indexed by ledger id (partial and full)
 	byLedger agedMap
@@ -294,10 +208,10 @@ type validations struct {
 
 	// Adaptor instance
 	// Is NOT managed by the mutex_ above
-	adaptor adaptor
+	Adaptor Adaptor
 }
 
-func (v *validations) removeTrie(nodeID NodeID, val Validation) {
+func (v *Validations) removeTrie(nodeID NodeID, val Validation) {
 	slid := toSeqLedgerID(val.Seq(), val.LedgerID())
 	if a, ok := v.acquiring[slid]; ok {
 		delete(a, nodeID)
@@ -313,10 +227,10 @@ func (v *validations) removeTrie(nodeID NodeID, val Validation) {
 }
 
 // Check if any pending acquire ledger requests are complete
-func (v *validations) checkAcquired() {
+func (v *Validations) checkAcquired() {
 	for sli, m := range v.acquiring {
 		_, lid := fromSeqLedgerID(sli)
-		l, err := v.adaptor.AcquireLedger(lid)
+		l, err := v.Adaptor.AcquireLedger(lid)
 		if err != nil {
 			continue
 		}
@@ -328,7 +242,7 @@ func (v *validations) checkAcquired() {
 }
 
 // Update the trie to reflect a new validated ledger
-func (v *validations) updateTrie(nodeID NodeID, l Ledger) {
+func (v *Validations) updateTrie(nodeID NodeID, l Ledger) {
 	oldl, ok := v.lastLedger[nodeID]
 	v.lastLedger[nodeID] = l
 	if ok {
@@ -349,7 +263,7 @@ func (v *validations) updateTrie(nodeID NodeID, l Ledger) {
   @param val The trusted validation issued by the node
   @param prior If not none, the last current validated ledger Seq,ID of key
 */
-func (v *validations) updateTrie2(
+func (v *Validations) updateTrie2(
 	nodeID NodeID, val Validation, seq Seq, id LedgerID) {
 	// Clear any prior acquiring ledger for this node
 	slid := toSeqLedgerID(seq, id)
@@ -362,7 +276,7 @@ func (v *validations) updateTrie2(
 	v.updateTrie3(nodeID, val)
 }
 
-func (v *validations) updateTrie3(nodeID NodeID, val Validation) {
+func (v *Validations) updateTrie3(nodeID NodeID, val Validation) {
 	if !val.Trusted() {
 		panic("validator is not trusted")
 	}
@@ -373,7 +287,7 @@ func (v *validations) updateTrie3(nodeID NodeID, val Validation) {
 		it[nodeID] = struct{}{}
 		return
 	}
-	ll, err := v.adaptor.AcquireLedger(val.LedgerID())
+	ll, err := v.Adaptor.AcquireLedger(val.LedgerID())
 	if err == nil {
 		v.updateTrie(nodeID, ll)
 	} else {
@@ -395,7 +309,7 @@ are checked and any stale validations are flushed from the trie.
 		 its arguments and will be called with mutex_ under lock.
 
 */
-func (v *validations) withTrie(f func(*ledgerTrie)) {
+func (v *Validations) withTrie(f func(*ledgerTrie)) {
 	// Call current to flush any stale validations
 	v.doCurrent(func(i int) {}, func(n NodeID, v Validation) {})
 	v.checkAcquired()
@@ -418,14 +332,14 @@ func (v *validations) withTrie(f func(*ledgerTrie)) {
            its arguments and will be called with mutex_ under lock.
 */
 
-func (v *validations) doCurrent(pre func(int), f func(NodeID, Validation)) {
-	t := v.adaptor.Now()
+func (v *Validations) doCurrent(pre func(int), f func(NodeID, Validation)) {
+	t := v.Adaptor.Now()
 	pre(len(v.current))
 	for k, val := range v.current {
 		// Check for staleness
 		if !isCurrent(t, val.SignTime(), val.SeenTime()) {
 			v.removeTrie(k, val)
-			v.adaptor.OnStale(val)
+			v.Adaptor.OnStale(val)
 			delete(v.current, k)
 			log.Println("and staled")
 		} else {
@@ -447,52 +361,45 @@ func (v *validations) doCurrent(pre func(int), f func(NodeID, Validation)) {
    @warning The invokable f is expected to be a simple transformation of
   its arguments and will be called with mutex_ under lock.
 */
-func (v *validations) loopByLedger(id LedgerID, pre func(int), f func(NodeID, Validation)) {
+func (v *Validations) loopByLedger(id LedgerID, pre func(int), f func(NodeID, Validation)) {
 	v.byLedger.loop(id, pre, f)
 }
 
-/** Constructor
-
-  @param p ValidationParms to control staleness/expiration of validations
-  @param c Clock to use for expiring validations stored by ledger
-  @param ts Parameters for constructing Adaptor instance
-*/
-func newValidations(a adaptor) *validations {
-	return &validations{
+// NewValidations is the constructor of Validatoins
+//   @param p ValidationParms to control staleness/expiration of validations
+//   @param c Clock to use for expiring validations stored by ledger
+//   @param ts Parameters for constructing Adaptor instance
+func NewValidations(a Adaptor) *Validations {
+	return &Validations{
 		byLedger:     make(agedMap),
-		adaptor:      a,
+		Adaptor:      a,
 		current:      make(map[NodeID]Validation),
-		seqEnforcers: make(map[NodeID]seqEnforcer),
+		seqEnforcers: make(map[NodeID]SeqEnforcer),
 		lastLedger:   make(map[NodeID]Ledger),
 		acquiring:    make(map[seqLedgerID]map[NodeID]struct{}),
 		trie:         newLedgerTrie(),
 	}
 }
 
-/** Return whether the local node can issue a validation for the given sequence
-  number
-
-  @param s The sequence number of the ledger the node wants to validate
-  @return Whether the validation satisfies the invariant, updating the
-          largest sequence number seen accordingly
-*/
-func (v *validations) canValidateSeq(s Seq) bool {
+// CanValidateSeq eturns whether the local node can issue a validation for the given sequence
+//   number
+//   @param s The sequence number of the ledger the node wants to validate
+//   @return Whether the validation satisfies the invariant, updating the
+//           largest sequence number seen accordingly
+func (v *Validations) CanValidateSeq(s Seq) bool {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
-	return v.localSeqEnforcer.do(time.Now(), s)
+	return v.localSeqEnforcer.Try(time.Now(), s)
 }
 
-/** Add a new validation
-
-  Attempt to add a new validation.
-
-  @param nodeID The identity of the node issuing this validation
-  @param val The validation to store
-  @return The outcome
-*/
-func (v *validations) add(nodeID NodeID, val Validation) valStatus {
-	if !isCurrent(v.adaptor.Now(), val.SignTime(), val.SeenTime()) {
-		return stale
+//Add a new validation
+//   Attempt to Add a new validation.
+//   @param nodeID The identity of the node issuing this validation
+//   @param val The validation to store
+//   @return The outcome
+func (v *Validations) Add(nodeID NodeID, val Validation) ValStatus {
+	if !isCurrent(v.Adaptor.Now(), val.SignTime(), val.SeenTime()) {
+		return VstatStale
 	}
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -501,8 +408,8 @@ func (v *validations) add(nodeID NodeID, val Validation) valStatus {
 	// validations sequence from that validator
 	now := time.Now()
 	enforcer := v.seqEnforcers[nodeID]
-	if !enforcer.do(now, val.Seq()) {
-		return badSeq
+	if !enforcer.Try(now, val.Seq()) {
+		return VstatBadSeq
 	}
 	v.seqEnforcers[nodeID] = enforcer
 	// Use insert_or_assign when C++17 supported
@@ -513,40 +420,35 @@ func (v *validations) add(nodeID NodeID, val Validation) valStatus {
 		if val.Trusted() {
 			v.updateTrie3(nodeID, val)
 		}
-		return current
+		return VstatCurrent
 	}
 	if !val.SignTime().After(oldVal.SignTime()) {
-		return stale
+		return VstatStale
 	}
-	v.adaptor.OnStale(oldVal)
+	v.Adaptor.OnStale(oldVal)
 	v.current[nodeID] = val
 	if val.Trusted() {
 		v.updateTrie2(nodeID, val, oldVal.Seq(), oldVal.LedgerID())
 	}
-	return current
+	return VstatCurrent
 }
 
-/** Expire old validation sets
-
-  Remove validation sets that were accessed more than
-  validationSET_EXPIRES ago.
-*/
-func (v *validations) expire() {
+// Expire old validation sets
+//   Remove validation sets that were accessed more than
+//   validationSET_EXPIRES ago.
+func (v *Validations) Expire() {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	v.byLedger.expire(validationSetExpires)
 }
 
-/** Update trust status of validations
-
-  Updates the trusted status of known validations to account for nodes
-  that have been added or removed from the UNL. This also updates the trie
-  to ensure only currently trusted nodes' validations are used.
-
-  @param added Identifiers of nodes that are now trusted
-  @param removed Identifiers of nodes that are no longer trusted
-*/
-func (v *validations) trustChanged(added, removed map[NodeID]struct{}) {
+// TrustChanged updates trust status of validations
+//   Updates the trusted status of known validations to account for nodes
+//   that have been added or removed from the UNL. This also updates the trie
+//   to ensure only currently trusted nodes' validations are used.
+//   @param added Identifiers of nodes that are now trusted
+//   @param removed Identifiers of nodes that are no longer trusted
+func (v *Validations) TrustChanged(added, removed map[NodeID]struct{}) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 
@@ -574,20 +476,16 @@ func (v *validations) trustChanged(added, removed map[NodeID]struct{}) {
 	}
 }
 
-/** Return the sequence number and ID of the preferred working ledger
-
-  A ledger is preferred if it has more support amongst trusted validators
-  and is *not* an ancestor of the current working ledger; otherwise it
-  remains the current working ledger.
-  (Parent of preferred stays put)
-
-  @param curr The local node's current working ledger
-
-  @return The sequence and id of the preferred working ledger,
-          or Seq{0},ID{0} if no trusted validations are available to
-          determine the preferred ledger.
-*/
-func (v *validations) getPreferred(curr Ledger) (Seq, LedgerID) {
+// GetPreferred returns the sequence number and ID of the preferred working ledger
+//   A ledger is preferred if it has more support amongst trusted validators
+//   and is *not* an ancestor of the current working ledger; otherwise it
+//   remains the current working ledger.
+//   (Parent of preferred stays put)
+//   @param curr The local node's current working ledger
+//   @return The sequence and id of the preferred working ledger,
+//           or Seq{0},ID{0} if no trusted validations are available to
+//           determine the preferred ledger.
+func (v *Validations) GetPreferred(curr Ledger) (Seq, LedgerID) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	var preferred *spanTip
@@ -638,41 +536,33 @@ func (v *validations) getPreferred(curr Ledger) (Seq, LedgerID) {
 	return curr.Seq(), curr.ID()
 }
 
-/** Get the ID of the preferred working ledger that exceeds a minimum valid
-  ledger sequence number
-
-  @param curr Current working ledger
-  @param minValidSeq Minimum allowed sequence number
-
-  @return ID Of the preferred ledger, or curr if the preferred ledger
-             is not valid
-*/
-
-func (v *validations) getPreferred2(curr Ledger, minValidSeq Seq) LedgerID {
-	preferredSeq, preferredID := v.getPreferred(curr)
+// GetPreferred2 Gets the ID of the preferred working ledger that exceeds a minimum valid
+//   ledger sequence number
+//   @param curr Current working ledger
+//   @param minValidSeq Minimum allowed sequence number
+//   @return ID Of the preferred ledger, or curr if the preferred ledger
+//              is not valid
+func (v *Validations) GetPreferred2(curr Ledger, minValidSeq Seq) LedgerID {
+	preferredSeq, preferredID := v.GetPreferred(curr)
 	if preferredSeq >= minValidSeq && preferredID != genesisID {
 		return preferredID
 	}
 	return curr.ID()
 }
 
-/** Determine the preferred last closed ledger for the next consensus round.
-
-  Called before starting the next round of ledger consensus to determine the
-  preferred working ledger. Uses the dominant peerCount ledger if no
-  trusted validations are available.
-
-  @param lcl Last closed ledger by this node
-  @param minSeq Minimum allowed sequence number of the trusted preferred ledger
-  @param peerCounts Map from ledger ids to count of peers with that as the
-                    last closed ledger
-  @return The preferred last closed ledger ID
-
-  @note The minSeq does not apply to the peerCounts, since this function
-        does not know their sequence number
-*/
-func (v *validations) getPreferredLCL(lcl Ledger, minSeq Seq, peerCounts map[LedgerID]uint32) LedgerID {
-	preferredSeq, preferredID := v.getPreferred(lcl)
+// GetPreferredLCL Determines the preferred last closed ledger for the next consensus round.
+//   Called before starting the next round of ledger consensus to determine the
+//   preferred working ledger. Uses the dominant peerCount ledger if no
+//   trusted validations are available.
+//   @param lcl Last closed ledger by this node
+//   @param minSeq Minimum allowed sequence number of the trusted preferred ledger
+//   @param peerCounts Map from ledger ids to count of peers with that as the
+//                     last closed ledger
+//   @return The preferred last closed ledger ID
+//   @note The minSeq does not apply to the peerCounts, since this function
+//         does not know their sequence number
+func (v *Validations) GetPreferredLCL(lcl Ledger, minSeq Seq, peerCounts map[LedgerID]uint32) LedgerID {
+	preferredSeq, preferredID := v.GetPreferred(lcl)
 	// Trusted validations exist
 	if preferredID != genesisID && preferredSeq > 0 {
 		if preferredSeq >= minSeq {
@@ -698,18 +588,15 @@ func (v *validations) getPreferredLCL(lcl Ledger, minSeq Seq, peerCounts map[Led
 	return lcl.ID()
 }
 
-/** Count the number of current trusted validators working on a ledger
-  after the specified one.
-
-  @param ledger The working ledger
-  @param ledgerID The preferred ledger
-  @return The number of current trusted validators working on a descendant
-          of the preferred ledger
-
-  @note If ledger.id() != ledgerID, only counts immediate child ledgers of
-        ledgerID
-*/
-func (v *validations) getNodesAfter(l Ledger, id LedgerID) uint32 {
+//GetNodesAfter counts the number of current trusted validators working on a ledger
+//   after the specified one.
+//   @param ledger The working ledger
+//   @param ledgerID The preferred ledger
+//   @return The number of current trusted validators working on a descendant
+//           of the preferred ledger
+//   @note If ledger.id() != ledgerID, only counts immediate child ledgers of
+//         ledgerID
+func (v *Validations) GetNodesAfter(l Ledger, id LedgerID) uint32 {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 
@@ -731,10 +618,9 @@ func (v *validations) getNodesAfter(l Ledger, id LedgerID) uint32 {
 	return num
 }
 
-/** Get the currently trusted full validations
-  @return Vector of validations from currently trusted validators
-*/
-func (v *validations) currentTrusted() []Validation {
+// CurrentTrusted gets the currently trusted full validations
+//   @return Vector of validations from currently trusted validators
+func (v *Validations) CurrentTrusted() []Validation {
 	var ret []Validation
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -750,10 +636,9 @@ func (v *validations) currentTrusted() []Validation {
 	return ret
 }
 
-// /** Get the set of node ids associated with current validations
-//     @return The set of node ids for active, listed validators
-// */
-func (v *validations) getCurrentNodeIDs() map[NodeID]struct{} {
+//GetCurrentNodeIDs gets the set of node ids associated with current validations
+//@return The set of node ids for active, listed validators
+func (v *Validations) GetCurrentNodeIDs() map[NodeID]struct{} {
 	ret := make(map[NodeID]struct{})
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -767,12 +652,10 @@ func (v *validations) getCurrentNodeIDs() map[NodeID]struct{} {
 	return ret
 }
 
-// /** Count the number of trusted full validations for the given ledger
-
+//NumTrustedForLedger  counts the number of trusted full validations for the given ledger
 //     @param ledgerID The identifier of ledger of interest
 //     @return The number of trusted validations
-// */
-func (v *validations) numTrustedForLedger(id LedgerID) uint {
+func (v *Validations) NumTrustedForLedger(id LedgerID) uint {
 	var count uint
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -787,12 +670,10 @@ func (v *validations) numTrustedForLedger(id LedgerID) uint {
 	return count
 }
 
-// /**  Get trusted full validations for a specific ledger
-
+//GetTrustedForLedger  gets trusted full validations for a specific ledger
 //      @param ledgerID The identifier of ledger of interest
 //      @return Trusted validations associated with ledger
-// */
-func (v *validations) getTrustedForLedger(id LedgerID) []Validation {
+func (v *Validations) GetTrustedForLedger(id LedgerID) []Validation {
 	var res []Validation
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -810,13 +691,11 @@ func (v *validations) getTrustedForLedger(id LedgerID) []Validation {
 	return res
 }
 
-// /** Returns fees reported by trusted full validators in the given ledger
-
+//Fees returns fees reported by trusted full validators in the given ledger
 //     @param ledgerID The identifier of ledger of interest
 //     @param baseFee The fee to report if not present in the validation
-//     @return Vector of fees
-// */
-func (v *validations) fees(id LedgerID, baseFee uint32) []uint32 {
+//     @return Vector of Fees
+func (v *Validations) Fees(id LedgerID, baseFee uint32) []uint32 {
 	var res []uint32
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -838,9 +717,8 @@ func (v *validations) fees(id LedgerID, baseFee uint32) []uint32 {
 	return res
 }
 
-// /** Flush all current validations
-//  */
-func (v *validations) flush() {
+//Flush all current validations
+func (v *Validations) Flush() {
 	flushed := make(map[NodeID]Validation)
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -848,5 +726,5 @@ func (v *validations) flush() {
 		flushed[nid] = v
 	}
 	v.current = make(map[NodeID]Validation)
-	v.adaptor.Flush(flushed)
+	v.Adaptor.Flush(flushed)
 }

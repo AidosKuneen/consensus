@@ -40,3 +40,77 @@
 //==============================================================================
 
 package consensus
+
+import (
+	"testing"
+	"time"
+)
+
+func TestShouldCloseLedger(t *testing.T) {
+	if !shouldCloseLedger(true, 10, 10, 10, -10*time.Second,
+		10*time.Second, 1*time.Second, 1*time.Second) {
+		t.Error()
+	}
+	if !shouldCloseLedger(true, 10, 10, 10, 100*time.Hour,
+		10*time.Second, 1*time.Second, 1*time.Second) {
+		t.Error()
+	}
+	if !shouldCloseLedger(true, 10, 10, 10, 10*time.Second,
+		100*time.Hour, 1*time.Second, 1*time.Second) {
+		t.Error()
+	}
+
+	if !shouldCloseLedger(true, 10, 3, 5, 10*time.Second,
+		10*time.Second, 10*time.Second, 10*time.Second) {
+		t.Error()
+	}
+
+	if shouldCloseLedger(false, 10, 0, 0, 1*time.Second,
+		1*time.Second, 1*time.Second, 10*time.Second) {
+		t.Error()
+	}
+	if !shouldCloseLedger(false, 10, 0, 0, 1*time.Second,
+		10*time.Second, 1*time.Second, 10*time.Second) {
+		t.Error()
+	}
+
+	if shouldCloseLedger(true, 10, 0, 0, 10*time.Second,
+		10*time.Second, 1*time.Second, 10*time.Second) {
+		t.Error()
+	}
+
+	if shouldCloseLedger(true, 10, 0, 0, 10*time.Second,
+		10*time.Second, 3*time.Second, 10*time.Second) {
+		t.Error()
+	}
+	if !shouldCloseLedger(true, 10, 0, 0, 10*time.Second,
+		10*time.Second, 10*time.Second, 10*time.Second) {
+		t.Error()
+	}
+}
+func TestCheckConsensus(t *testing.T) {
+	if checkConsensus(10, 2, 2, 0, 3*time.Second,
+		2*time.Second, true) != StateNo {
+		t.Error()
+	}
+	if checkConsensus(10, 2, 2, 0, 3*time.Second,
+		4*time.Second, true) != StateNo {
+		t.Error()
+	}
+	if checkConsensus(10, 2, 2, 0, 3*time.Second,
+		10*time.Second, true) != StateYes {
+		t.Error()
+	}
+	if checkConsensus(10, 2, 1, 0, 3*time.Second,
+		10*time.Second, true) != StateNo {
+		t.Error()
+	}
+	if checkConsensus(10, 2, 1, 8, 3*time.Second,
+		10*time.Second, true) != StateMovedOn {
+		t.Error()
+	}
+	if checkConsensus(0, 0, 0, 0, 3*time.Second,
+		10*time.Second, true) != StateYes {
+		t.Error()
+	}
+}

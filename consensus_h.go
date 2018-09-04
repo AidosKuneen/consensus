@@ -39,6 +39,43 @@
 */
 //==============================================================================
 
+// Package consensus is a generic implementation of consensus algorithm.
+//
+//   Achieves consensus on the next ledger.
+//
+//   Two things need consensus:
+//
+//     1.  The set of transactions included in the ledger.
+//     2.  The close time for the ledger.
+//
+//   The basic flow:
+//
+//     1. A call to `startRound` places the node in the `Open` phase.  In this
+//        phase, the node is waiting for transactions to include in its open
+//        ledger.
+//     2. Successive calls to `timerEntry` check if the node can close the ledger.
+//        Once the node `Close`s the open ledger, it transitions to the
+//        `Establish` phase.  In this phase, the node shares/receives peer
+//        proposals on which transactions should be accepted in the closed ledger.
+//     3. During a subsequent call to `timerEntry`, the node determines it has
+//        reached consensus with its peers on which transactions to include. It
+//        transitions to the `Accept` phase. In this phase, the node works on
+//        applying the transactions to the prior ledger to generate a new closed
+//        ledger. Once the new ledger is completed, the node shares the validated
+//        ledger with the network, does some book-keeping, then makes a call to
+//        `startRound` to start the cycle again.
+//
+//   This class uses a generic interface to allow adapting Consensus for specific
+//   applications. The Adaptor template implements a set of helper functions that
+//   plug the consensus algorithm into a specific application.  It also identifies
+//   the types that play important roles in Consensus (transactions, ledgers, ...).
+//   The code stubs below outline the interface and type requirements.  The traits
+//   types must be copy constructible and assignable.
+//
+//   @warning The generic implementation is not thread safe and the public methods
+//   are not intended to be run concurrently.  When in a concurrent environment,
+//   the application is responsible for ensuring thread-safety.  Simply locking
+//   whenever touching the Consensus instance is one option.
 package consensus
 
 import (
@@ -52,203 +89,15 @@ type monitoredMode struct {
 	mode Mode
 }
 
-func (m *monitoredMode) set(mode Mode, a adaptor) {
+func (m *monitoredMode) set(mode Mode, a Adaptor) {
 	a.OnModeChange(m.mode, mode)
 	m.mode = mode
 }
 
-/** Generic implementation of consensus algorithm.
-
-  Achieves consensus on the next ledger.
-
-  Two things need consensus:
-
-    1.  The set of transactions included in the ledger.
-    2.  The close time for the ledger.
-
-  The basic flow:
-
-    1. A call to `startRound` places the node in the `Open` phase.  In this
-       phase, the node is waiting for transactions to include in its open
-       ledger.
-    2. Successive calls to `timerEntry` check if the node can close the ledger.
-       Once the node `Close`s the open ledger, it transitions to the
-       `Establish` phase.  In this phase, the node shares/receives peer
-       proposals on which transactions should be accepted in the closed ledger.
-    3. During a subsequent call to `timerEntry`, the node determines it has
-       reached consensus with its peers on which transactions to include. It
-       transitions to the `Accept` phase. In this phase, the node works on
-       applying the transactions to the prior ledger to generate a new closed
-       ledger. Once the new ledger is completed, the node shares the validated
-       ledger with the network, does some book-keeping, then makes a call to
-       `startRound` to start the cycle again.
-
-  This class uses a generic interface to allow adapting Consensus for specific
-  applications. The Adaptor template implements a set of helper functions that
-  plug the consensus algorithm into a specific application.  It also identifies
-  the types that play important roles in Consensus (transactions, ledgers, ...).
-  The code stubs below outline the interface and type requirements.  The traits
-  types must be copy constructible and assignable.
-
-  @warning The generic implementation is not thread safe and the public methods
-  are not intended to be run concurrently.  When in a concurrent environment,
-  the application is responsible for ensuring thread-safety.  Simply locking
-  whenever touching the Consensus instance is one option.
-
-  @code
-  // A single transaction
-  struct Tx
-  {
-    // Unique identifier of transaction
-    using ID = ...;
-
-    ID id() const;
-
-  };
-
-  // A set of transactions
-  struct TxSet
-  {
-    // Unique ID of TxSet (not of Tx)
-    using ID = ...;
-    // Type of individual transaction comprising the TxSet
-    using Tx = Tx;
-
-    bool exists(Tx::ID const &) const;
-    // Return value should have semantics like Tx const *
-    Tx const * find(Tx::ID const &) const ;
-    ID const & id() const;
-
-    // Return set of transactions that are not common to this set or other
-    // boolean indicates which set it was in
-    std::map<Tx::ID, bool> compare(TxSet const & other) const;
-
-    // A mutable view of transactions
-    struct MutableTxSet
-    {
-        MutableTxSet(TxSet const &);
-        bool insert(Tx const &);
-        bool erase(Tx::ID const &);
-    };
-
-    // Construct from a mutable view.
-    TxSet(MutableTxSet const &);
-
-    // Alternatively, if the TxSet is itself mutable
-    // just alias MutableTxSet = TxSet
-
-  };
-
-  // Agreed upon state that consensus transactions will modify
-  struct Ledger
-  {
-    using ID = ...;
-    using Seq = ...;
-
-    // Unique identifier of ledgerr
-    ID const id() const;
-    Seq seq() const;
-    auto closeTimeResolution() const;
-    auto closeAgree() const;
-    auto closeTime() const;
-    auto parentCloseTime() const;
-    Json::Value getJson() const;
-  };
-
-  // Wraps a peer's ConsensusProposal
-  struct PeerPosition
-  {
-    ConsensusProposal<
-        std::uint32_t, //NodeID,
-        typename Ledger::ID,
-        typename TxSet::ID> const &
-    proposal() const;
-
-  };
-
-
-  class Adaptor
-  {
-  public:
-      //-----------------------------------------------------------------------
-      // Define consensus types
-      using Ledger_t = Ledger;
-      using NodeID_t = std::uint32_t;
-      using TxSet_t = TxSet;
-      using PeerPosition_t = PeerPosition;
-
-      //-----------------------------------------------------------------------
-      //
-      // Attempt to acquire a specific ledger.
-      boost::optional<Ledger> acquireLedger(Ledger::ID const & ledgerID);
-
-      // Acquire the transaction set associated with a proposed position.
-      boost::optional<TxSet> acquireTxSet(TxSet::ID const & setID);
-
-      // Whether any transactions are in the open ledger
-      bool hasOpenTransactions() const;
-
-      // Number of proposers that have validated the given ledger
-      std::size_t proposersValidated(Ledger::ID const & prevLedger) const;
-
-      // Number of proposers that have validated a ledger descended from the
-      // given ledger; if prevLedger.id() != prevLedgerID, use prevLedgerID
-      // for the determination
-      std::size_t proposersFinished(Ledger const & prevLedger,
-                                    Ledger::ID const & prevLedger) const;
-
-      // Return the ID of the last closed (and validated) ledger that the
-      // application thinks consensus should use as the prior ledger.
-      Ledger::ID getPrevLedger(Ledger::ID const & prevLedgerID,
-                      Ledger const & prevLedger,
-                      Mode mode);
-
-      // Called whenever consensus operating mode changes
-      void onModeChange(ConsensusMode before, ConsensusMode after);
-
-      // Called when ledger closes
-      Result onClose(Ledger const &, Ledger const & prev, Mode mode);
-
-      // Called when ledger is accepted by consensus
-      void onAccept(Result const & result,
-        RCLCxLedger const & prevLedger,
-        NetClock::duration closeResolution,
-        CloseTimes const & rawCloseTimes,
-        Mode const & mode);
-
-      // Called when ledger was forcibly accepted by consensus via the simulate
-      // function.
-      void onForceAccept(Result const & result,
-        RCLCxLedger const & prevLedger,
-        NetClock::duration closeResolution,
-        CloseTimes const & rawCloseTimes,
-        Mode const & mode);
-
-      // Propose the position to peers.
-      void propose(ConsensusProposal<...> const & pos);
-
-      // Share a received peer proposal with other peer's.
-      void share(PeerPosition_t const & prop);
-
-      // Share a disputed transaction with peers
-      void share(Txn const & tx);
-
-      // Share given transaction set with peers
-      void share(TxSet const &s);
-
-      // Consensus timing parameters and constants
-      ConsensusParms const &
-      parms() const;
-  };
-  @endcode
-
-  @tparam Adaptor Defines types and provides helper functions needed to adapt
-                  Consensus to the larger application.
-*/
-
-type consensus struct {
+// Consensus is a generic implementation of consensus algorithm.
+type Consensus struct {
 	timePoint              time.Time
-	adaptor                adaptor
+	adaptor                Adaptor
 	phase                  consensusPhase // accepted
 	mode                   monitoredMode  //observing
 	firstRound             bool           //= true;
@@ -305,19 +154,18 @@ type consensus struct {
 	deadNodes map[NodeID]struct{}
 }
 
-/** Constructor.
-
-  @param clock The clock used to internally sample consensus progress
-  @param adaptor The instance of the adaptor class
-  @param j The journal to log debug output
-*/
-func newConsensus(adaptor adaptor) *consensus {
+// NewConsensus is the constructor.
+//   @param clock The clock used to internally sample consensus progress
+//   @param adaptor The instance of the adaptor class
+//   @param j The journal to log debug output
+func NewConsensus(now time.Time, adaptor Adaptor) *Consensus {
 	log.Println("Creating consensus object")
-	return &consensus{
+	return &Consensus{
 		phase: phaseAccepted,
 		mode: monitoredMode{
 			mode: ModeObserving,
 		},
+		now:                 now,
 		firstRound:          true,
 		closeResolution:     ledgerDefaultTimeResolution,
 		adaptor:             adaptor,
@@ -329,20 +177,16 @@ func newConsensus(adaptor adaptor) *consensus {
 	}
 }
 
-/** StartRound Kick-off the next round of consensus.
-
-  Called by the client code to start each round of consensus.
-
-  @param now The network adjusted time
-  @param prevLedgerID the ID of the last ledger
-  @param prevLedger The last ledger
-  @param nowUntrusted ID of nodes that are newly untrusted this round
-  @param proposing Whether we want to send proposals to peers this round.
-
-  @note @b prevLedgerID is not required to the ID of @b prevLedger since
-  the ID may be known locally before the contents of the ledger arrive
-*/
-func (c *consensus) StartRound(
+// StartRound Kick-off the next round of consensus.
+//   Called by the client code to start each round of consensus.
+//   @param now The network adjusted time
+//   @param prevLedgerID the ID of the last ledger
+//   @param prevLedger The last ledger
+//   @param nowUntrusted ID of nodes that are newly untrusted this round
+//   @param proposing Whether we want to send proposals to peers this round.
+//   @note @b prevLedgerID is not required to the ID of @b prevLedger since
+//   the ID may be known locally before the contents of the ledger arrive
+func (c *Consensus) StartRound(
 	now time.Time,
 	prevLedgerID LedgerID,
 	prevLedger Ledger,
@@ -379,7 +223,7 @@ func (c *consensus) StartRound(
 	c.startRoundInternal(now, prevLedgerID, prevLedger, startMode)
 }
 
-func (c *consensus) startRoundInternal(
+func (c *Consensus) startRoundInternal(
 	now time.Time, prevLedgerID LedgerID, prevLedger Ledger, mode Mode) {
 	c.phase = phaseOpen
 	c.mode.set(mode, c.adaptor)
@@ -408,14 +252,12 @@ func (c *consensus) startRoundInternal(
 	}
 }
 
-/** PeerProposal notifies that a peer has proposed a new
-position, adjust our tracking.
-
- @param now The network adjusted time
- @param newProposal The new proposal from a peer
- @return Whether we should do delayed relay of this proposal.
-*/
-func (c *consensus) PeerProposal(
+// PeerProposal notifies that a peer has proposed a new
+// position, adjust our tracking.
+//  @param now The network adjusted time
+//  @param newProposal The new proposal from a peer
+//  @return Whether we should do delayed relay of this proposal.
+func (c *Consensus) PeerProposal(
 	now time.Time, newPeerPos PeerPosition) bool {
 	peerID := newPeerPos.Proposal().NodeID
 
@@ -434,7 +276,7 @@ func (c *consensus) PeerProposal(
 
 /** Handle a replayed or a new peer proposal.
  */
-func (c *consensus) peerProposalInternal(
+func (c *Consensus) peerProposalInternal(
 	now time.Time,
 	newPeerPos PeerPosition) bool {
 	// Nothing to do for now if we are currently working on a ledger
@@ -520,12 +362,9 @@ func (c *consensus) peerProposalInternal(
 	}
 }
 
-/** TimerTnery drives consensus forward by calling periodically.
-
-  @param now The network adjusted time
-*/
-
-func (c *consensus) TimerEntry(now time.Time) {
+//TimerEntry drives consensus forward by calling periodically.
+//@param now The network adjusted time
+func (c *Consensus) TimerEntry(now time.Time) {
 	// Nothing to do if we are currently working on a ledger
 	if c.phase == phaseAccepted {
 		return
@@ -545,12 +384,10 @@ func (c *consensus) TimerEntry(now time.Time) {
 	}
 }
 
-/** GotTxSet processes a transaction set acquired from the network
-
-  @param now The network adjusted time
-  @param txSet the transaction set
-*/
-func (c *consensus) GotTxSet(now time.Time, ts TxSet) {
+//GotTxSet processes a transaction set acquired from the network
+//   @param now The network adjusted time
+//   @param txSet the transaction set
+func (c *Consensus) GotTxSet(now time.Time, ts TxSet) {
 	// Nothing to do if we've finished work on a ledger
 	if c.phase == phaseAccepted {
 		return
@@ -604,7 +441,7 @@ func (c *consensus) GotTxSet(now time.Time, ts TxSet) {
                         ledger. Uses 100ms if unspecified.
 */
 
-func (c *consensus) simulate(
+func (c *Consensus) simulate(
 	now time.Time,
 	consensusDelay time.Duration) {
 	log.Println("Simulating consensus")
@@ -628,20 +465,17 @@ func (c *consensus) simulate(
 	log.Println("Simulation complete")
 }
 
-/** PrevLedgerID gets the previous ledger ID.
-
-  The previous ledger is the last ledger seen by the consensus code and
-  should correspond to the most recent validated ledger seen by this peer.
-
-  @return ID of previous ledger
-*/
-func (c *consensus) PrevLedgerID() LedgerID {
+// PrevLedgerID gets the previous ledger ID.
+//   The previous ledger is the last ledger seen by the consensus code and
+//   should correspond to the most recent validated ledger seen by this peer.
+//   @return ID of previous ledger
+func (c *Consensus) PrevLedgerID() LedgerID {
 	return c.prevLedgerID
 }
 
 // Change our view of the previous ledger
 // Handle a change in the prior ledger during a consensus round
-func (c *consensus) handleWrongLedger(lgrID LedgerID) {
+func (c *Consensus) handleWrongLedger(lgrID LedgerID) {
 	if lgrID == c.prevLedgerID && c.previousLedger.ID() == lgrID {
 		panic("invalid arguments")
 	}
@@ -687,7 +521,7 @@ func (c *consensus) handleWrongLedger(lgrID LedgerID) {
   If the previous ledger differs, we are no longer in sync with
   the network and need to bow out/switch modes.
 */
-func (c *consensus) checkLedger() {
+func (c *Consensus) checkLedger() {
 	netLgr :=
 		c.adaptor.GetPrevLedger(c.prevLedgerID, c.previousLedger, c.mode.mode)
 
@@ -710,7 +544,7 @@ func (c *consensus) checkLedger() {
 /** If we radically changed our consensus context for some reason,
   we need to replay recent proposals so that they're not lost.
 */
-func (c *consensus) playbackProposals() {
+func (c *Consensus) playbackProposals() {
 	for _, it := range c.recentPeerPositions {
 		for _, pos := range it {
 			if pos.Proposal().PreviousLedger == c.prevLedgerID &&
@@ -727,7 +561,7 @@ func (c *consensus) playbackProposals() {
   transactions.  After enough time has elapsed, we will close the ledger,
   switch to the establish phase and start the consensus process.
 */
-func (c *consensus) phaseOpen() {
+func (c *Consensus) phaseOpen() {
 	// it is shortly before ledger close time
 	anyTransactions := c.adaptor.HasOpenTransactions()
 	proposersClosed := len(c.currPeerPositions)
@@ -781,7 +615,7 @@ func (c *consensus) phaseOpen() {
 
   If we have consensus, move to the accepted phase.
 */
-func (c *consensus) phaseEstablish() {
+func (c *Consensus) phaseEstablish() {
 	// can only establish consensus if we already took a stance
 	if c.result == nil {
 		panic("result is nil")
@@ -828,7 +662,7 @@ func (c *consensus) phaseEstablish() {
 }
 
 // Close the open ledger and establish initial position.
-func (c *consensus) closeLedger() {
+func (c *Consensus) closeLedger() {
 	// We should not be closing if we already have a position
 	if c.result == nil {
 		panic("result is nil")
@@ -873,7 +707,7 @@ this.
 
 @return the number of participants which must agree
 */
-func (c *consensus) participantsNeeded(participants, percent int) int {
+func (c *Consensus) participantsNeeded(participants, percent int) int {
 	result := ((participants * percent) + (percent / 2)) / 100
 	if result == 0 {
 		return 1
@@ -882,7 +716,7 @@ func (c *consensus) participantsNeeded(participants, percent int) int {
 }
 
 // Adjust our positions to try to agree with other validators.
-func (c *consensus) updateOurPositions() {
+func (c *Consensus) updateOurPositions() {
 	// We must have a position if we are updating it
 	if c.result == nil {
 		panic("result is nil")
@@ -1043,7 +877,7 @@ func (c *consensus) updateOurPositions() {
 	}
 }
 
-func (c *consensus) haveConsensus() bool {
+func (c *Consensus) haveConsensus() bool {
 	// Must have a stance if we are checking for consensus
 	if c.result == nil {
 		panic("result is nil")
@@ -1097,7 +931,7 @@ func (c *consensus) haveConsensus() bool {
 
 // Revoke our outstanding proposal, if any, and cease proposing
 // until this round ends.
-func (c *consensus) leaveConsensus() {
+func (c *Consensus) leaveConsensus() {
 	if c.mode.mode == ModeProposing {
 		if c.result != nil && !c.result.Position.isBowOut() {
 			c.result.Position.bowOut(c.now)
@@ -1110,7 +944,7 @@ func (c *consensus) leaveConsensus() {
 }
 
 // Create disputes between our position and the provided one.
-func (c *consensus) createDisputes(o TxSet) {
+func (c *Consensus) createDisputes(o TxSet) {
 	// Cannot create disputes without our stance
 	if c.result == nil {
 		panic("result is nil")
@@ -1175,7 +1009,7 @@ func (c *consensus) createDisputes(o TxSet) {
 
 // Update our disputes given that this node has adopted a new position.
 // Will call createDisputes as needed.
-func (c *consensus) updateDisputes(node NodeID, other TxSet) {
+func (c *Consensus) updateDisputes(node NodeID, other TxSet) {
 	// Cannot updateDisputes without our stance
 	if c.result == nil {
 		panic("result is nil")
@@ -1191,9 +1025,160 @@ func (c *consensus) updateDisputes(node NodeID, other TxSet) {
 		it.setVote(node, other.Exists(it.Tx.ID()))
 	}
 }
-func (c *consensus) asCloseTime(raw time.Time) time.Time {
+func (c *Consensus) asCloseTime(raw time.Time) time.Time {
 	if useRoundedCloseTime {
 		return roundCloseTime(raw, c.closeResolution)
 	}
-	return effCloseTime(raw, c.closeResolution, c.previousLedger.CloseTime())
+	return EffCloseTime(raw, c.closeResolution, c.previousLedger.CloseTime())
 }
+
+/*
+//   @code
+//   // A single transaction
+//   struct Tx
+//   {
+//     // Unique identifier of transaction
+//     using ID = ...;
+//
+//     ID id() const;
+//
+//   };
+//
+//   // A set of transactions
+//   struct TxSet
+//   {
+//     // Unique ID of TxSet (not of Tx)
+//     using ID = ...;
+//     // Type of individual transaction comprising the TxSet
+//     using Tx = Tx;
+//
+//     bool exists(Tx::ID const &) const;
+//     // Return value should have semantics like Tx const *
+//     Tx const * find(Tx::ID const &) const ;
+//     ID const & id() const;
+//
+//     // Return set of transactions that are not common to this set or other
+//     // boolean indicates which set it was in
+//     std::map<Tx::ID, bool> compare(TxSet const & other) const;
+//
+//     // A mutable view of transactions
+//     struct MutableTxSet
+//     {
+//         MutableTxSet(TxSet const &);
+//         bool insert(Tx const &);
+//         bool erase(Tx::ID const &);
+//     };
+//
+//     // Construct from a mutable view.
+//     TxSet(MutableTxSet const &);
+//
+//     // Alternatively, if the TxSet is itself mutable
+//     // just alias MutableTxSet = TxSet
+//
+//   };
+//
+//   // Agreed upon state that consensus transactions will modify
+//   struct Ledger
+//   {
+//     using ID = ...;
+//     using Seq = ...;
+//
+//     // Unique identifier of ledgerr
+//     ID const id() const;
+//     Seq seq() const;
+//     auto closeTimeResolution() const;
+//     auto closeAgree() const;
+//     auto closeTime() const;
+//     auto parentCloseTime() const;
+//     Json::Value getJson() const;
+//   };
+//
+//   // Wraps a peer's ConsensusProposal
+//   struct PeerPosition
+//   {
+//     ConsensusProposal<
+//         std::uint32_t, //NodeID,
+//         typename Ledger::ID,
+//         typename TxSet::ID> const &
+//     proposal() const;
+//
+//   };
+//
+//   class Adaptor
+//   {
+//   public:
+//       //-----------------------------------------------------------------------
+//       // Define consensus types
+//       using Ledger_t = Ledger;
+//        using NodeID_t = std::uint32_t;
+//        using TxSet_t = TxSet;
+//        using PeerPosition_t = PeerPosition;
+//
+//       //-----------------------------------------------------------------------
+//       //
+//       // Attempt to acquire a specific ledger.
+//       boost::optional<Ledger> acquireLedger(Ledger::ID const & ledgerID);
+//
+//       // Acquire the transaction set associated with a proposed position.
+//       boost::optional<TxSet> acquireTxSet(TxSet::ID const & setID);
+//
+//       // Whether any transactions are in the open ledger
+//       bool hasOpenTransactions() const;
+//
+//       // Number of proposers that have validated the given ledger
+//       std::size_t proposersValidated(Ledger::ID const & prevLedger) const;
+//
+//       // Number of proposers that have validated a ledger descended from the
+//       // given ledger; if prevLedger.id() != prevLedgerID, use prevLedgerID
+//       // for the determination
+//       std::size_t proposersFinished(Ledger const & prevLedger,
+//                                     Ledger::ID const & prevLedger) const;
+//
+//       // Return the ID of the last closed (and validated) ledger that the
+//       // application thinks consensus should use as the prior ledger.
+//       Ledger::ID getPrevLedger(Ledger::ID const & prevLedgerID,
+//                       Ledger const & prevLedger,
+//                       Mode mode);
+//
+//       // Called whenever consensus operating mode changes
+//       void onModeChange(ConsensusMode before, ConsensusMode after);
+//
+//       // Called when ledger closes
+//       Result onClose(Ledger const &, Ledger const & prev, Mode mode);
+//
+//       // Called when ledger is accepted by consensus
+//       void onAccept(Result const & result,
+//         RCLCxLedger const & prevLedger,
+//         NetClock::duration closeResolution,
+//         CloseTimes const & rawCloseTimes,
+//         Mode const & mode);
+//
+//       // Called when ledger was forcibly accepted by consensus via the simulate
+//       // function.
+//       void onForceAccept(Result const & result,
+//         RCLCxLedger const & prevLedger,
+//         NetClock::duration closeResolution,
+//         CloseTimes const & rawCloseTimes,
+//         Mode const & mode);
+//
+//       // Propose the position to peers.
+//       void propose(ConsensusProposal<...> const & pos);
+//
+//       // Share a received peer proposal with other peer's.
+//       void share(PeerPosition_t const & prop);
+//
+//       // Share a disputed transaction with peers
+//       void share(Txn const & tx);
+//
+//       // Share given transaction set with peers
+//       void share(TxSet const &s);
+//
+//       // Consensus timing parameters and constants
+//       ConsensusParms const &
+//       parms() const;
+//   };
+//   @endcode
+//
+//   @tparam Adaptor Defines types and provides helper functions needed to adapt
+//                   Consensus to the larger application.
+*/

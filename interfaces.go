@@ -99,7 +99,10 @@ type PeerPosition interface {
 	Proposal() *Proposal
 }
 
-type adaptor interface {
+//The Adaptor template implements a set of helper functions that
+//plug the consensus algorithm into a specific application.  It also identifies
+//the types that play important roles in Consensus (transactions, ledgers, ...).
+type Adaptor interface {
 	//-----------------------------------------------------------------------
 	//
 	// Attempt to acquire a specific ledger.
