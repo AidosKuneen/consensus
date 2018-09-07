@@ -43,7 +43,6 @@ package consensus
 
 import (
 	"bytes"
-	"log"
 	"sync"
 	"time"
 )
@@ -194,7 +193,7 @@ type Validations struct {
 	seqEnforcers map[NodeID]SeqEnforcer
 
 	//! Validations from listed nodes, indexed by ledger id (partial and full)
-	byLedger agedMap
+	byLedger *agedMap
 
 	// Represents the ancestry of validated ledgers
 	trie *ledgerTrie
@@ -208,7 +207,7 @@ type Validations struct {
 
 	// Adaptor instance
 	// Is NOT managed by the mutex_ above
-	Adaptor Adaptor
+	Adaptor ValidationAdaptor
 }
 
 func (v *Validations) removeTrie(nodeID NodeID, val Validation) {
@@ -265,6 +264,9 @@ func (v *Validations) updateTrie(nodeID NodeID, l Ledger) {
 */
 func (v *Validations) updateTrie2(
 	nodeID NodeID, val Validation, seq Seq, id LedgerID) {
+	if !val.Trusted() {
+		panic("node must be trusted")
+	}
 	// Clear any prior acquiring ledger for this node
 	slid := toSeqLedgerID(seq, id)
 	if it, ok := v.acquiring[slid]; ok {
@@ -291,8 +293,12 @@ func (v *Validations) updateTrie3(nodeID NodeID, val Validation) {
 	if err == nil {
 		v.updateTrie(nodeID, ll)
 	} else {
-		v.acquiring[slid] = map[NodeID]struct{}{
-			nodeID: struct{}{},
+		if v.acquiring[slid] == nil {
+			v.acquiring[slid] = map[NodeID]struct{}{
+				nodeID: struct{}{},
+			}
+		} else {
+			v.acquiring[slid][nodeID] = struct{}{}
 		}
 	}
 }
@@ -311,7 +317,7 @@ are checked and any stale validations are flushed from the trie.
 */
 func (v *Validations) withTrie(f func(*ledgerTrie)) {
 	// Call current to flush any stale validations
-	v.doCurrent(func(i int) {}, func(n NodeID, v Validation) {})
+	v.doCurrent(func(i int) {}, func(NodeID, Validation) {})
 	v.checkAcquired()
 	f(v.trie)
 }
@@ -341,7 +347,6 @@ func (v *Validations) doCurrent(pre func(int), f func(NodeID, Validation)) {
 			v.removeTrie(k, val)
 			v.Adaptor.OnStale(val)
 			delete(v.current, k)
-			log.Println("and staled")
 		} else {
 			// contains a live record
 			f(k, val)
@@ -369,15 +374,15 @@ func (v *Validations) loopByLedger(id LedgerID, pre func(int), f func(NodeID, Va
 //   @param p ValidationParms to control staleness/expiration of validations
 //   @param c Clock to use for expiring validations stored by ledger
 //   @param ts Parameters for constructing Adaptor instance
-func NewValidations(a Adaptor) *Validations {
+func NewValidations(a ValidationAdaptor, c clock, genesis Ledger) *Validations {
 	return &Validations{
-		byLedger:     make(agedMap),
+		byLedger:     newAgedMap(c),
 		Adaptor:      a,
 		current:      make(map[NodeID]Validation),
 		seqEnforcers: make(map[NodeID]SeqEnforcer),
 		lastLedger:   make(map[NodeID]Ledger),
 		acquiring:    make(map[seqLedgerID]map[NodeID]struct{}),
-		trie:         newLedgerTrie(),
+		trie:         newLedgerTrie(genesis),
 	}
 }
 
@@ -389,7 +394,7 @@ func NewValidations(a Adaptor) *Validations {
 func (v *Validations) CanValidateSeq(s Seq) bool {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
-	return v.localSeqEnforcer.Try(time.Now(), s)
+	return v.localSeqEnforcer.Try(v.byLedger.clock.Now(), s)
 }
 
 //Add a new validation
@@ -406,7 +411,7 @@ func (v *Validations) Add(nodeID NodeID, val Validation) ValStatus {
 
 	// Check that validation sequence is greater than any non-expired
 	// validations sequence from that validator
-	now := time.Now()
+	now := v.byLedger.clock.Now()
 	enforcer := v.seqEnforcers[nodeID]
 	if !enforcer.Try(now, val.Seq()) {
 		return VstatBadSeq
@@ -463,7 +468,7 @@ func (v *Validations) TrustChanged(added, removed map[NodeID]struct{}) {
 			v.removeTrie(id, val)
 		}
 	}
-	for _, val := range v.byLedger {
+	for _, val := range v.byLedger.ledgers {
 		for nodeVal, val2 := range val.m {
 			if _, ok := added[nodeVal]; ok {
 				val2.SetTrusted()
@@ -544,7 +549,7 @@ func (v *Validations) GetPreferred(curr Ledger) (Seq, LedgerID) {
 //              is not valid
 func (v *Validations) GetPreferred2(curr Ledger, minValidSeq Seq) LedgerID {
 	preferredSeq, preferredID := v.GetPreferred(curr)
-	if preferredSeq >= minValidSeq && preferredID != genesisID {
+	if preferredSeq >= minValidSeq && preferredID != GenesisID {
 		return preferredID
 	}
 	return curr.ID()
@@ -561,10 +566,11 @@ func (v *Validations) GetPreferred2(curr Ledger, minValidSeq Seq) LedgerID {
 //   @return The preferred last closed ledger ID
 //   @note The minSeq does not apply to the peerCounts, since this function
 //         does not know their sequence number
-func (v *Validations) GetPreferredLCL(lcl Ledger, minSeq Seq, peerCounts map[LedgerID]uint32) LedgerID {
+func (v *Validations) GetPreferredLCL(lcl Ledger, minSeq Seq,
+	peerCounts map[LedgerID]uint32) LedgerID {
 	preferredSeq, preferredID := v.GetPreferred(lcl)
 	// Trusted validations exist
-	if preferredID != genesisID && preferredSeq > 0 {
+	if preferredID != GenesisID && preferredSeq > 0 {
 		if preferredSeq >= minSeq {
 			return preferredID
 		}

@@ -97,8 +97,8 @@ var (
 	//! Minimum number of seconds to wait to ensure others have computed the LCL
 	ledgerMinClose = 2 * time.Second
 
-	//! How often we check state or change positions
-	ledgerGranularity = 1 * time.Second
+	//LedgerGranularity determins how often we check state or change positions
+	LedgerGranularity = 1 * time.Second
 
 	/** The minimum amount of time to consider the previous round
 	  to have taken.

@@ -42,6 +42,7 @@
 package consensus
 
 import (
+	"log"
 	"time"
 )
 
@@ -59,8 +60,8 @@ var ledgerPossibleTimeResolutions = []time.Duration{
 	120 * time.Second,
 }
 
-//! Initial resolution of ledger close time.
-var ledgerDefaultTimeResolution = ledgerPossibleTimeResolutions[2]
+// LedgerDefaultTimeResolution is the initial resolution of ledger close time.
+var LedgerDefaultTimeResolution = ledgerPossibleTimeResolutions[2]
 
 const (
 	//! How often we increase the close time resolution (in numbers of ledgers)
@@ -111,6 +112,7 @@ func getNextLedgerTimeResolution(
 		}
 	}
 	if iter == len(ledgerPossibleTimeResolutions) {
+		log.Println(previousResolution)
 		panic("invalid resolution")
 	}
 

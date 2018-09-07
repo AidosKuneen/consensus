@@ -78,7 +78,7 @@ type Proposal struct {
 	CloseTime time.Time
 
 	// !The time this position was last updated
-	SeenTime time.Time
+	Time time.Time
 
 	//! The sequence number of these positions taken by this node
 	ProposeSeq Seq
@@ -101,7 +101,7 @@ func newConsensusProposal(prev LedgerID, seq Seq, positon TxSetID, closeTime, no
 		PreviousLedger: prev,
 		Position:       positon,
 		CloseTime:      closeTime,
-		SeenTime:       now,
+		Time:           now,
 		ProposeSeq:     seq,
 		NodeID:         nodeID,
 	}
@@ -123,7 +123,7 @@ func (p *Proposal) isBowOut() bool {
 //! Get whether this position is stale relative to the provided cutoff
 
 func (p *Proposal) isStale(cutoff time.Time) bool {
-	return p.SeenTime.Before(cutoff)
+	return p.Time.Before(cutoff) || p.Time.Equal(cutoff)
 }
 
 /** Update the position during the consensus process. This will increment
@@ -137,7 +137,7 @@ func (p *Proposal) changePosition(
 	newPosition TxSetID, newCloseTime time.Time, now time.Time) {
 	p.Position = newPosition
 	p.CloseTime = newCloseTime
-	p.SeenTime = now
+	p.Time = now
 	if p.ProposeSeq != seqLeave {
 		p.ProposeSeq++
 	}
@@ -148,11 +148,11 @@ func (p *Proposal) changePosition(
   @param now Time when this node left consensus.
 */
 func (p *Proposal) bowOut(now time.Time) {
-	p.SeenTime = now
+	p.Time = now
 	p.ProposeSeq = seqLeave
 }
 func (p *Proposal) equals(p2 *Proposal) bool {
 	return p.NodeID == p2.NodeID && p.ProposeSeq == p2.ProposeSeq &&
 		p.PreviousLedger == p2.PreviousLedger && p.Position == p2.Position &&
-		p.CloseTime.Equal(p2.CloseTime) && p.SeenTime.Equal(p2.SeenTime)
+		p.CloseTime.Equal(p2.CloseTime) && p.Time.Equal(p2.Time)
 }

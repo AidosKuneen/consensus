@@ -46,7 +46,6 @@ import (
 )
 
 var ledgers = make(map[LedgerID]*tledger)
-var ledgers2 = make(map[rune]*tledger)
 
 type tledger struct {
 	id   LedgerID
@@ -80,11 +79,11 @@ func (l *tledger) ParentCloseTime() time.Time {
 
 func (l *tledger) IndexOf(s Seq) LedgerID {
 	if s == 0 {
-		return genesisID
+		return GenesisID
 	}
-	for lid := l.ID(); lid != genesisID; lid = ledgers[lid].prev {
+	for lid := l.id; lid != GenesisID; lid = ledgers[lid].prev {
 		if ledgers[lid].Seq() == s {
-			return lid
+			return ledgers[lid].id
 		}
 	}
 	panic("not found")
@@ -92,22 +91,28 @@ func (l *tledger) IndexOf(s Seq) LedgerID {
 
 func newLedger(path string) *tledger {
 	var l *tledger
-	pre := genesisID
+	pre := GenesisID
+	var id LedgerID
 	for i, p := range path {
-		if ll, ok := ledgers2[p]; ok {
+		id[0] = byte(p + 1 - 'a')
+		if ll, ok := ledgers[id]; ok {
 			l = ll
 		} else {
-			var id [32]byte
-			id[0] = byte(i + 1)
 			l = &tledger{
 				id:   id,
 				seq:  Seq(i + 1),
 				prev: pre,
 			}
-			ledgers2[p] = l
+			ledgers[id] = l
 		}
-		pre = l.ID()
-		ledgers[l.ID()] = l
+		pre = id
 	}
 	return l
+}
+
+//GenesisLedger is the genesis.
+var genesisLedger = &tledger{
+	id:   GenesisID,
+	seq:  0,
+	prev: GenesisID,
 }

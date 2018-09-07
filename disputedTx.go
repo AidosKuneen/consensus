@@ -67,13 +67,17 @@ func newDisputedTx(tr TxT, ourVote bool, numPeers uint) *DisputedTx {
 	}
 }
 
+func (dtx *DisputedTx) id() TxID {
+	return dtx.Tx.ID()
+}
+
 func (dtx *DisputedTx) setVote(peer NodeID, votesYes bool) {
 	res, exist := dtx.Votes[peer]
-	dtx.Votes[peer] = votesYes
 
-	// new vote
 	switch {
 	case !exist:
+		// new vote
+		dtx.Votes[peer] = votesYes
 		if votesYes {
 			log.Println("Peer ", peer, " votes YES on ", dtx.Tx.ID())
 			dtx.Yays++

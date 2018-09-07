@@ -45,7 +45,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 )
@@ -77,12 +76,8 @@ func (st *spanTip) ancestor(s Seq) LedgerID {
 
 type span struct {
 	start  Seq
-	end    Seq
+	end    Seq //1
 	ledger Ledger
-}
-
-func newSpan() *span {
-	return newSpanFromLedger(GenesisLedger)
 }
 
 func newSpanFromLedger(l Ledger) *span {
@@ -189,13 +184,12 @@ type node struct {
 	parent        *node
 }
 
-func newNode() *node {
-	return &node{
-		span: newSpanFromLedger(GenesisLedger),
+func newNode(l Ledger) *node {
+	if l.Seq() == 0 {
+		return &node{
+			span: newSpanFromLedger(l),
+		}
 	}
-}
-
-func newNodeFromLedger(l Ledger) *node {
 	return &node{
 		span:          newSpanFromLedger(l),
 		tipSupport:    1,
@@ -227,7 +221,7 @@ func (n *node) erase(child *node) {
 }
 
 func (n *node) String() string {
-	return fmt.Sprint(n.span.String(), "(T", n.tipSupport, ",B:", n.branchSupport, ")")
+	return fmt.Sprint(n.span, "(T", n.tipSupport, ",B:", n.branchSupport, ")")
 }
 
 /** Ancestry trie of ledgers
@@ -367,9 +361,9 @@ func (lt *ledgerTrie) dumpImpl(curr *node, offset int) string {
 	return str.String()
 }
 
-func newLedgerTrie() *ledgerTrie {
+func newLedgerTrie(genesis Ledger) *ledgerTrie {
 	return &ledgerTrie{
-		root:       newNode(),
+		root:       newNode(genesis),
 		seqSupport: make(map[Seq]uint32),
 	}
 }
@@ -379,7 +373,7 @@ func newLedgerTrie() *ledgerTrie {
   @param ledger A ledger and its ancestry
   @param count The count of support for this ledger
 */
-func (lt *ledgerTrie) insert(l Ledger, count uint32) {
+func (lt *ledgerTrie) insert(l Ledger, count /* =1 */ uint32) {
 	loc, diffSeq := lt.find(l)
 	// There is always a place to insert
 	if loc == nil {
@@ -462,7 +456,7 @@ func (lt *ledgerTrie) insert(l Ledger, count uint32) {
 
   @return Whether a matching node was decremented and possibly removed.
 */
-func (lt *ledgerTrie) remove(l Ledger, count uint32) bool {
+func (lt *ledgerTrie) remove(l Ledger, count uint32 /* =1 */) bool {
 	loc, diffSeq := lt.find(l)
 
 	// Cannot erase root
@@ -479,7 +473,7 @@ func (lt *ledgerTrie) remove(l Ledger, count uint32) bool {
 	}
 	loc.tipSupport -= count
 
-	if _, exist := lt.seqSupport[l.Seq()]; !exist {
+	if sup, exist := lt.seqSupport[l.Seq()]; !exist || sup < count {
 		panic("ledger not found")
 	}
 	lt.seqSupport[l.Seq()] -= count
@@ -651,13 +645,10 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) *spanTip {
 			// We did not consume the entire span, so we have found the
 			// preferred ledger
 			if nextSeq < curr.span.end {
-				log.Println(curr.span.start, curr.span.end-1, nextSeq)
 				sp, err := curr.span.before(nextSeq)
 				if err != nil {
 					panic(err)
 				}
-				log.Println(sp.start, sp.end-1)
-				log.Println()
 				return sp.tip()
 			}
 		}

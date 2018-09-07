@@ -155,20 +155,20 @@ type Timer struct {
 	Dur   time.Duration
 }
 
-func (ct Timer) read() time.Duration {
+func (ct *Timer) read() time.Duration {
 	return ct.Dur
 }
 
-func (ct Timer) tick(fixed time.Duration) {
+func (ct *Timer) tick(fixed time.Duration) {
 	ct.Dur += fixed
 }
 
-func (ct Timer) reset(tp time.Time) {
+func (ct *Timer) reset(tp time.Time) {
 	ct.Start = tp
 	ct.Dur = 0
 }
 
-func (ct Timer) tickTime(tp time.Time) {
+func (ct *Timer) tickTime(tp time.Time) {
 	ct.Dur = tp.Sub(ct.Start)
 }
 
@@ -214,26 +214,26 @@ type Result struct {
 
 	//! Our proposed Position on transactions/close time
 	// You must fill it when OnClose is called.
-	Position Proposal
+	Position *Proposal
 
 	//! Transactions which are under dispute with our peers
 	Disputes map[TxID]*DisputedTx
 
 	// Set of TxSet ids we have already compared/created disputes
-	Compares map[TxSetID]TxSet
+	compares map[TxSetID]TxSet
 
 	// Measures the duration of the establish phase for this consensus round
 	RoundTime Timer
 
 	// Indicates State in which consensus ended.  Once in the accept phase
 	// will be either Yes or MovedOn
-	State State
+	State State //= ConsensusState::No;
 
 	// The number of peers proposing during the round
 	Proposers uint
 }
 
-func newConsensusResult(txns TxSet, pos Proposal) *Result {
+func newConsensusResult(txns TxSet, pos *Proposal) *Result {
 	if txns.ID() != pos.Position {
 		panic("invalid txSet and proposal")
 	}
@@ -242,7 +242,7 @@ func newConsensusResult(txns TxSet, pos Proposal) *Result {
 		Position: pos,
 		State:    StateNo,
 		Disputes: make(map[TxID]*DisputedTx),
-		Compares: make(map[TxSetID]TxSet),
+		compares: make(map[TxSetID]TxSet),
 	}
 
 }

@@ -73,9 +73,7 @@ func shouldCloseLedger(
 	timeSincePrevClose time.Duration, // Time since last ledger's close time
 	openTime time.Duration, // Time waiting to close this ledger
 	idleInterval time.Duration) bool {
-
-	if (prevRoundTime < -1*time.Second) || (prevRoundTime > 10*time.Minute) ||
-		(timeSincePrevClose > 10*time.Minute) {
+	if (prevRoundTime < -1*time.Second) || (prevRoundTime > 10*time.Minute) /*|| (timeSincePrevClose > 10*time.Minute)*/ { //changed from original
 		// These are unexpected cases, we just close the ledger
 		log.Println("shouldCloseLedger Trans=",
 			anyTransactions,
@@ -106,7 +104,7 @@ func shouldCloseLedger(
 	// ledger reached consensus so that slower validators can slow down
 	// the network
 	if openTime < (prevRoundTime / 2) {
-		log.Println("Ledger has not been open long enough")
+		log.Println("Ledger has not been open long enough", openTime, prevRoundTime)
 		return false
 	}
 
@@ -133,7 +131,7 @@ func checkConsensusReached(
 	agreeing uint,
 	total uint,
 	countSelf bool,
-	minConsensusPct int) bool {
+	minConsensusPct uint) bool {
 	// If we are alone, we have a consensus
 	if total == 0 {
 		return true
@@ -145,7 +143,7 @@ func checkConsensusReached(
 
 	currentPercentage := (agreeing * 100) / total
 
-	return currentPercentage >= uint(minConsensusPct)
+	return currentPercentage >= minConsensusPct
 }
 
 func checkConsensus(
@@ -178,7 +176,7 @@ func checkConsensus(
 	// Have we, together with the nodes on our UNL list, reached the threshold
 	// to declare consensus?
 	if checkConsensusReached(
-		currentAgree, currentProposers, proposing, minConsensusPCT) {
+		currentAgree, currentProposers, proposing, uint(minConsensusPCT)) {
 		log.Println("normal consensus")
 		return StateYes
 	}
@@ -186,7 +184,7 @@ func checkConsensus(
 	// Have sufficient nodes on our UNL list moved on and reached the threshold
 	// to declare consensus?
 	if checkConsensusReached(
-		currentFinished, currentProposers, false, minConsensusPCT) {
+		currentFinished, currentProposers, false, uint(minConsensusPCT)) {
 		log.Println("We see no consensus, but 80% of nodes have moved on")
 		return StateMovedOn
 	}

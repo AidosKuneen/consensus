@@ -49,23 +49,25 @@ import (
 )
 
 func TestGetPreferred1(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	p := lt.getPreferred(0)
-	if p.id != genesisID {
+	if p.id != GenesisID {
 		t.Error("invalid getpreffered")
 	}
 	p = lt.getPreferred(2)
-	if p.id != genesisID {
+	if p.id != GenesisID {
 		t.Error("invalid getpreffered")
 	}
 }
 
 func TestGetPreferred2(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	abc := newLedger("abc")
 	lt.insert(abc, 1)
 	p := lt.getPreferred(3)
@@ -74,9 +76,10 @@ func TestGetPreferred2(t *testing.T) {
 	}
 }
 func TestGetPreferred3(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	lt.insert(abc, 1)
@@ -91,9 +94,10 @@ func TestGetPreferred3(t *testing.T) {
 	}
 }
 func TestGetPreferred4(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	lt.insert(abc, 1)
@@ -108,9 +112,10 @@ func TestGetPreferred4(t *testing.T) {
 	}
 }
 func TestGetPreferred5(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	abce := newLedger("abce")
@@ -137,9 +142,10 @@ func TestGetPreferred5(t *testing.T) {
 	}
 }
 func TestGetPreferred6(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	abce := newLedger("abce")
@@ -166,9 +172,10 @@ func TestGetPreferred6(t *testing.T) {
 	}
 }
 func TestGetPreferred7(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	abcd := newLedger("abcd")
 	abce := newLedger("abce")
 	lt.insert(abcd, 2)
@@ -191,9 +198,10 @@ func TestGetPreferred7(t *testing.T) {
 }
 
 func TestGetPreferred8(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	abce := newLedger("abce")
@@ -227,9 +235,10 @@ func TestGetPreferred8(t *testing.T) {
 }
 
 func TestGetPreferred9(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	abcde := newLedger("abcde")
@@ -250,6 +259,7 @@ func TestGetPreferred9(t *testing.T) {
 	}
 }
 func TestGetPreferred10(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	/** Build the tree below with initial tip support annotated
 	        A
 	       / \
@@ -262,7 +272,7 @@ func TestGetPreferred10(t *testing.T) {
 	      G
 	*/
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 	a := newLedger("a")
 	ab := newLedger("ab")
 	ac := newLedger("ac")
@@ -398,15 +408,16 @@ func TestGetPreferred10(t *testing.T) {
 // Since the root is a special node that breaks the no-single child
 // invariant, do some tests that exercise it.
 func TestRootRelated(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
-	if lt.remove(GenesisLedger, 1) {
+	lt := newLedgerTrie(genesisLedger)
+	if lt.remove(genesisLedger, 1) {
 		t.Error("invalid removal")
 	}
-	if lt.branchSupport(GenesisLedger) != 0 {
+	if lt.branchSupport(genesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(GenesisLedger) != 0 {
+	if lt.tipSupport(genesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
 
@@ -415,10 +426,10 @@ func TestRootRelated(t *testing.T) {
 	if err := lt.checkInvariants(); err != nil {
 		t.Error(err)
 	}
-	if lt.branchSupport(GenesisLedger) != 1 {
+	if lt.branchSupport(genesisLedger) != 1 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(GenesisLedger) != 0 {
+	if lt.tipSupport(genesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
 
@@ -427,10 +438,10 @@ func TestRootRelated(t *testing.T) {
 	if err := lt.checkInvariants(); err != nil {
 		t.Error(err)
 	}
-	if lt.branchSupport(GenesisLedger) != 2 {
+	if lt.branchSupport(genesisLedger) != 2 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(GenesisLedger) != 0 {
+	if lt.tipSupport(genesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
 
@@ -440,16 +451,17 @@ func TestRootRelated(t *testing.T) {
 	if err := lt.checkInvariants(); err != nil {
 		t.Error(err)
 	}
-	if lt.branchSupport(GenesisLedger) != 1 {
+	if lt.branchSupport(genesisLedger) != 1 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(GenesisLedger) != 0 {
+	if lt.tipSupport(genesisLedger) != 0 {
 		t.Error("invalid rootsuport")
 	}
 }
 func TestStress(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie()
+	lt := newLedgerTrie(genesisLedger)
 
 	// Test quasi-randomly add/remove supporting for different ledgers
 	// from a branching history.
@@ -473,7 +485,7 @@ func TestStress(t *testing.T) {
 		}
 		var tl Ledger
 		if curr == "" {
-			tl = GenesisLedger
+			tl = genesisLedger
 		} else {
 			tl = newLedger(curr)
 		}

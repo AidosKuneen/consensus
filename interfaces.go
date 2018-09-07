@@ -62,6 +62,9 @@ type Seq uint64
 
 type seqLedgerID [8 + 32]byte
 
+//GenesisID is the ID of genesis ledger.
+var GenesisID [32]byte
+
 // TxT is a single transaction
 type TxT interface {
 	ID() TxID
@@ -71,7 +74,7 @@ type TxT interface {
 type TxSet interface {
 	Exists(TxID) bool
 	// Return value should have semantics like Tx const *
-	Find(TxID) TxT
+	Find(TxID) (TxT, error)
 	ID() TxSetID
 
 	// Return set of transactions that are not common to this set or other
@@ -99,6 +102,27 @@ type PeerPosition interface {
 	Proposal() *Proposal
 }
 
+//The ValidationAdaptor template implements a set of helper functions that
+//plug the consensus algorithm into a specific application.  It also identifies
+//the types that play important roles in Consensus (transactions, ledgers, ...).
+type ValidationAdaptor interface {
+	//-----------------------------------------------------------------------
+	//
+	// Attempt to acquire a specific ledger.
+	AcquireLedger(LedgerID) (Ledger, error)
+
+	// Handle a newly stale validation, this should do minimal work since
+	// it is called by Validations while it may be iterating Validations
+	// under lock
+	OnStale(Validation)
+
+	// Flush the remaining validations (typically done on shutdown)
+	Flush(remaining map[NodeID]Validation)
+
+	// Return the current network time (used to determine staleness)
+	Now() time.Time
+}
+
 //The Adaptor template implements a set of helper functions that
 //plug the consensus algorithm into a specific application.  It also identifies
 //the types that play important roles in Consensus (transactions, ledgers, ...).
@@ -109,7 +133,7 @@ type Adaptor interface {
 	AcquireLedger(LedgerID) (Ledger, error)
 
 	// Acquire the transaction set associated with a proposed position.
-	AcquireTxSet(TxSetID) TxSet
+	AcquireTxSet(TxSetID) (TxSet, error)
 
 	// Whether any transactions are in the open ledger
 	HasOpenTransactions() bool
@@ -140,7 +164,7 @@ type Adaptor interface {
 	OnForceAccept(*Result, Ledger, time.Duration, *CloseTimes, Mode)
 
 	// Propose the position to peers.
-	Propose(Proposal)
+	Propose(*Proposal)
 
 	// Share a received peer proposal with other peer's.
 	SharePosition(PeerPosition)
@@ -150,17 +174,6 @@ type Adaptor interface {
 
 	// Share given transaction set with peers
 	ShareTxset(TxSet)
-
-	// Handle a newly stale validation, this should do minimal work since
-	// it is called by Validations while it may be iterating Validations
-	// under lock
-	OnStale(Validation)
-
-	// Flush the remaining validations (typically done on shutdown)
-	Flush(remaining map[NodeID]Validation)
-
-	// Return the current network time (used to determine staleness)
-	Now() time.Time
 }
 
 //Validation is a validation info of ledger.
@@ -191,4 +204,8 @@ type Validation interface {
 	Full() bool
 
 	LoadFee() uint32
+}
+
+type clock interface {
+	Now() time.Time
 }

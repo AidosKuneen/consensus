@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// This is a rewrite of https://github.com/ripple/rippled/src/ripple/consensus
+// This is a rewrite of https://github.com/ripple/rippled/src/test/consensus
 // covered by:
 //------------------------------------------------------------------------------
 /*
@@ -42,44 +42,41 @@
 package consensus
 
 import (
+	"errors"
+	"log"
 	"time"
 )
 
-var genesisID [32]byte
-
-//GenesisLedger is the genesis.
-var GenesisLedger = &genesisLedgerT{}
-
-type genesisLedgerT struct {
+type adaptorT struct {
+	staleData *staleData
 }
 
-func (l *genesisLedgerT) ID() LedgerID {
-	return genesisID
-}
-
-func (l *genesisLedgerT) Seq() Seq {
-	return 0
-}
-
-func (l *genesisLedgerT) CloseTimeResolution() time.Duration {
-	return 0
-}
-
-func (l *genesisLedgerT) CloseAgree() bool {
-	return false
-}
-
-func (l *genesisLedgerT) CloseTime() time.Time {
-	return time.Time{}
-}
-
-func (l *genesisLedgerT) ParentCloseTime() time.Time {
-	return time.Time{}
-}
-
-func (l *genesisLedgerT) IndexOf(s Seq) LedgerID {
-	if s == 0 {
-		return genesisID
+//-----------------------------------------------------------------------
+//
+// Attempt to acquire a specific ledger.
+func (a *adaptorT) AcquireLedger(id LedgerID) (Ledger, error) {
+	l, ok := ledgers[id]
+	if !ok {
+		log.Println("not found", id)
+		return nil, errors.New("not found")
 	}
-	panic("not found")
+	log.Println("found")
+	return l, nil
+}
+
+// Handle a newly stale validation, this should do minimal work since
+// it is called by Validations while it may be iterating Validations
+// under lock
+func (a *adaptorT) OnStale(v Validation) {
+	a.staleData.stale = append(a.staleData.stale, v)
+}
+
+// Flush the remaining validations (typically done on shutdown)
+func (a *adaptorT) Flush(remaining map[NodeID]Validation) {
+	a.staleData.flushed = remaining
+}
+
+// Return the current network time (used to determine staleness)
+func (a *adaptorT) Now() time.Time {
+	return time.Now()
 }

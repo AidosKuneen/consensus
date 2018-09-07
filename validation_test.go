@@ -116,18 +116,27 @@ type testHarness struct {
 	staledata  *staleData
 	vals       *Validations
 	nextNodeID NodeID
+	clock      *mclock
 }
 
+type mclock struct {
+}
+
+func (c *mclock) Now() time.Time {
+	return time.Now()
+}
 func newTestHarness() *testHarness {
 	sd := staleData{
 		flushed: make(map[NodeID]Validation),
 	}
+	mc := &mclock{}
 	vs := NewValidations(&adaptorT{
 		staleData: &sd,
-	})
+	}, mc, genesisLedger)
 	return &testHarness{
 		vals:      vs,
 		staledata: &sd,
+		clock:     mc,
 	}
 }
 
@@ -308,7 +317,7 @@ func TestOnStale(t *testing.T) {
 			vals.GetCurrentNodeIDs()
 		},
 		func(vals *Validations) {
-			vals.GetPreferred(GenesisLedger)
+			vals.GetPreferred(genesisLedger)
 		},
 		func(vals *Validations) {
 			vals.GetNodesAfter(a, a.ID())
@@ -324,7 +333,7 @@ func TestOnStale(t *testing.T) {
 		if harness.vals.GetNodesAfter(a, a.ID()) != 1 {
 			t.Fatal("invalid getnodesafetr", i)
 		}
-		s, id := harness.vals.GetPreferred(GenesisLedger)
+		s, id := harness.vals.GetPreferred(genesisLedger)
 		if s != ab.Seq() || id != ab.ID() {
 			t.Error("invalid getPreferred")
 		}
@@ -344,8 +353,8 @@ func TestOnStale(t *testing.T) {
 		if harness.vals.GetNodesAfter(a, a.ID()) != 0 {
 			t.Error("invalid getnodeafter")
 		}
-		s, id = harness.vals.GetPreferred(GenesisLedger)
-		if s != 0 || id != genesisID {
+		s, id = harness.vals.GetPreferred(genesisLedger)
+		if s != 0 || id != GenesisID {
 			t.Error("invalid getPreferred", s, id)
 		}
 		validationCurrentLocal = b
@@ -685,7 +694,7 @@ func TestGetPreferredLedger(t *testing.T) {
 	acd := newLedger("acd")
 
 	s, lid := harness.vals.GetPreferred(a)
-	if lid != genesisID || s != 0 {
+	if lid != GenesisID || s != 0 {
 		t.Error("invalid")
 	}
 	if harness.add(na.validate3(b)) != VstatCurrent {
@@ -831,10 +840,10 @@ func TestAcquireValidatedLedger(t *testing.T) {
 	if harness.vals.NumTrustedForLedger(id2) != 1 {
 		t.Error()
 	}
-	if harness.vals.GetNodesAfter(GenesisLedger, genesisID) != 0 {
+	if harness.vals.GetNodesAfter(genesisLedger, GenesisID) != 0 {
 		t.Error()
 	}
-	s, lid := harness.vals.GetPreferred(GenesisLedger)
+	s, lid := harness.vals.GetPreferred(genesisLedger)
 	if s != 2 || lid != id2 {
 		t.Fatal(s, lid)
 	}
@@ -842,13 +851,13 @@ func TestAcquireValidatedLedger(t *testing.T) {
 	if harness.add(v) != VstatCurrent {
 		t.Error()
 	}
-	s, lid = harness.vals.GetPreferred(GenesisLedger)
+	s, lid = harness.vals.GetPreferred(genesisLedger)
 	if s != 2 || lid != id3 {
 		t.Error()
 	}
 	ab := newLedger("ab")
-	if harness.vals.GetNodesAfter(GenesisLedger, genesisID) != 1 {
-		t.Fatal(harness.vals.GetNodesAfter(GenesisLedger, genesisID))
+	if harness.vals.GetNodesAfter(genesisLedger, GenesisID) != 1 {
+		t.Fatal(harness.vals.GetNodesAfter(genesisLedger, GenesisID))
 	}
 	time.Sleep(5 * time.Second)
 
@@ -859,7 +868,7 @@ func TestAcquireValidatedLedger(t *testing.T) {
 	if harness.vals.NumTrustedForLedger(id4) != 1 {
 		t.Error()
 	}
-	s, lid = harness.vals.GetPreferred(GenesisLedger)
+	s, lid = harness.vals.GetPreferred(genesisLedger)
 	if s != ab.seq || lid != ab.id {
 		t.Error()
 	}
@@ -870,7 +879,7 @@ func TestAcquireValidatedLedger(t *testing.T) {
 	if harness.vals.NumTrustedForLedger(id4) != 2 {
 		t.Error()
 	}
-	s, lid = harness.vals.GetPreferred(GenesisLedger)
+	s, lid = harness.vals.GetPreferred(genesisLedger)
 	if s != ab.seq || lid != ab.id {
 		t.Error()
 	}
@@ -884,7 +893,7 @@ func TestAcquireValidatedLedger(t *testing.T) {
 	if harness.add(v) != VstatCurrent {
 		t.Error()
 	}
-	s, lid = harness.vals.GetPreferred(GenesisLedger)
+	s, lid = harness.vals.GetPreferred(genesisLedger)
 	if s != abcde.seq || lid != abcde.id {
 		t.Error()
 	}
@@ -954,7 +963,7 @@ func TestTrustChanged(t *testing.T) {
 	}
 	trusted := []*validationT{v}
 	checker := func() {
-		tid := genesisID
+		tid := GenesisID
 		if len(trusted) > 0 {
 			tid = trusted[0].id
 		}
@@ -975,10 +984,10 @@ func TestTrustChanged(t *testing.T) {
 		if len(harness.vals.GetCurrentNodeIDs()) != len(listed) {
 			t.Error()
 		}
-		if harness.vals.GetNodesAfter(GenesisLedger, genesisID) != uint32(len(trusted)) {
+		if harness.vals.GetNodesAfter(genesisLedger, GenesisID) != uint32(len(trusted)) {
 			t.Error()
 		}
-		if _, lid := harness.vals.GetPreferred(GenesisLedger); lid != tid {
+		if _, lid := harness.vals.GetPreferred(genesisLedger); lid != tid {
 			t.Error()
 		}
 		for i, v := range harness.vals.GetTrustedForLedger(tid) {
@@ -1041,10 +1050,10 @@ func TestTrustChanged(t *testing.T) {
 	if len(vals.CurrentTrusted()) != len(trusted) {
 		t.Error()
 	}
-	if _, lid := vals.GetPreferred(GenesisLedger); lid != v.id {
+	if _, lid := vals.GetPreferred(genesisLedger); lid != v.id {
 		t.Error()
 	}
-	if vals.GetNodesAfter(GenesisLedger, genesisID) != 0 {
+	if vals.GetNodesAfter(genesisLedger, GenesisID) != 0 {
 		t.Error()
 	}
 	trusted = nil
@@ -1060,7 +1069,7 @@ func TestTrustChanged(t *testing.T) {
 	if len(vals.CurrentTrusted()) != len(trusted) {
 		t.Error()
 	}
-	if vals.GetNodesAfter(GenesisLedger, genesisID) != 0 {
+	if vals.GetNodesAfter(genesisLedger, GenesisID) != 0 {
 		t.Error()
 	}
 }
