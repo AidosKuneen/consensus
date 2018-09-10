@@ -107,6 +107,12 @@ func newConsensusProposal(prev LedgerID, seq Seq, positon TxSetID, closeTime, no
 	}
 }
 
+//Clone clones the proposal
+func (p *Proposal) Clone() *Proposal {
+	p2 := *p
+	return &p2
+}
+
 /** Whether this is the first position taken during the current
   consensus round.
 */

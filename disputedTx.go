@@ -73,26 +73,26 @@ func (dtx *DisputedTx) id() TxID {
 
 func (dtx *DisputedTx) setVote(peer NodeID, votesYes bool) {
 	res, exist := dtx.Votes[peer]
-
+	did := dtx.Tx.ID()
 	switch {
 	case !exist:
 		// new vote
 		dtx.Votes[peer] = votesYes
 		if votesYes {
-			log.Println("Peer ", peer, " votes YES on ", dtx.Tx.ID())
+			log.Println("Peer ", peer[0], " votes YES on ", did[:2])
 			dtx.Yays++
 		} else {
-			log.Println("Peer ", peer, " votes NO on ", dtx.Tx.ID())
+			log.Println("Peer ", peer[0], " votes NO on ", did[:2])
 			dtx.Nays++
 		}
 	case votesYes && !res:
 		// changes vote to yes
-		log.Println("Peer ", peer, "now votes YES on ", dtx.Tx.ID())
+		log.Println("Peer ", peer[0], "now votes YES on ", did[:2])
 		dtx.Nays--
 		dtx.Yays++
 		// changes vote to no
 	case !votesYes && res:
-		log.Println("Peer ", peer, "now votes NO on ", dtx.Tx.ID())
+		log.Println("Peer ", peer[0], "now votes NO on ", did[:2])
 		dtx.Nays++
 		dtx.Yays--
 	}
@@ -152,6 +152,7 @@ func (dtx *DisputedTx) updateVote(percentTime int, proposing bool) bool {
 	}
 
 	dtx.OurVote = newPosition
-	log.Println("We now vote ", dtx.OurVote, " on ", dtx.Tx.ID())
+	tid := dtx.Tx.ID()
+	log.Println("We now vote ", dtx.OurVote, " on ", tid[:2])
 	return true
 }

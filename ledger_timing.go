@@ -42,7 +42,6 @@
 package consensus
 
 import (
-	"log"
 	"time"
 )
 
@@ -112,7 +111,6 @@ func getNextLedgerTimeResolution(
 		}
 	}
 	if iter == len(ledgerPossibleTimeResolutions) {
-		log.Println(previousResolution)
 		panic("invalid resolution")
 	}
 

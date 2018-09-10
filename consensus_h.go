@@ -160,7 +160,6 @@ type Consensus struct {
 //   @param adaptor The instance of the adaptor class
 //   @param j The journal to log debug output
 func NewConsensus(c clock, adaptor Adaptor) *Consensus {
-	log.Println("Creating consensus object")
 	return &Consensus{
 		phase: phaseAccepted,
 		mode: monitoredMode{
@@ -230,7 +229,6 @@ func (c *Consensus) startRoundInternal(
 	c.mode.set(mode, c.adaptor)
 	c.now = now
 	c.prevLedgerID = prevLedgerID
-	log.Println("at start", prevLedgerID)
 	c.previousLedger = prevLedger
 	c.result = nil
 	c.convergePercent = 0
@@ -271,7 +269,8 @@ func (c *Consensus) PeerProposal(
 			props = props[1:]
 		}
 
-		props = append(props, newPeerPos)
+		c.recentPeerPositions[peerID] = append(props, newPeerPos)
+
 	}
 	return c.peerProposalInternal(now, newPeerPos)
 }
@@ -293,8 +292,8 @@ func (c *Consensus) peerProposalInternal(
 	peerID := newPeerProp.NodeID
 
 	if newPeerProp.PreviousLedger != c.prevLedgerID {
-		log.Println("Got proposal for ", newPeerProp.PreviousLedger,
-			" but we are on ", c.prevLedgerID)
+		log.Println("Got proposal for ", newPeerProp.PreviousLedger[:2],
+			" but we are on ", c.prevLedgerID[:2])
 		return false
 	}
 
@@ -326,8 +325,8 @@ func (c *Consensus) peerProposalInternal(
 
 			return true
 		}
-
 		c.currPeerPositions[peerID] = newPeerPos
+		log.Println("added prop", len(c.currPeerPositions))
 	}
 
 	if newPeerProp.isInitial() {
@@ -338,7 +337,7 @@ func (c *Consensus) peerProposalInternal(
 	}
 
 	log.Println("Processing peer proposal ", newPeerProp.ProposeSeq,
-		"/", newPeerProp.Position)
+		"/", newPeerProp.Position[:2])
 
 	{
 		ait, ok := c.acquired[newPeerProp.Position]
@@ -618,7 +617,6 @@ func (c *Consensus) phaseEstablish() {
 	if c.result == nil {
 		panic("result is nil")
 	}
-
 	c.result.RoundTime.tickTime(c.c.Now())
 	c.result.Proposers = uint(len(c.currPeerPositions))
 
@@ -633,7 +631,6 @@ func (c *Consensus) phaseEstablish() {
 	if c.result.RoundTime.read() < ledgerMinConsensus {
 		return
 	}
-
 	c.updateOurPositions()
 
 	// Nothing to do if we don't have consensus.
@@ -756,7 +753,7 @@ func (c *Consensus) updateOurPositions() {
 			//  time can change our position on a dispute
 			if disp.updateVote(c.convergePercent, c.mode.mode == ModeProposing) {
 				if mutableSet == nil {
-					mutableSet = c.result.Txns
+					mutableSet = c.result.Txns.Clone()
 				}
 
 				if disp.OurVote {
@@ -773,7 +770,6 @@ func (c *Consensus) updateOurPositions() {
 			ourNewSet = mutableSet
 		}
 	}
-
 	consensusCloseTime := time.Time{}
 	c.haveCloseTimeConsensus = false
 
@@ -812,7 +808,7 @@ func (c *Consensus) updateOurPositions() {
 
 		for tim, cnt := range closeTimeVotes {
 			log.Println("CCTime: seq ", c.previousLedger.Seq()+1, ": ",
-				tim, " has ", cnt, ", ", threshVote, " required")
+				time.Unix(int64(tim), 0), " has ", cnt, ", ", threshVote, " required")
 
 			if cnt >= threshVote {
 				// A close time has enough votes for us to try to agree
@@ -831,6 +827,14 @@ func (c *Consensus) updateOurPositions() {
 				" Mode:", c.mode.mode,
 				" Thresh:", threshConsensus,
 				" Pos:", consensusCloseTime)
+		} else {
+			log.Println(
+				"CT consensus:",
+				" Proposers:", len(c.currPeerPositions),
+				" Mode:", c.mode.mode,
+				" Thresh:", threshConsensus,
+				" Pos:", consensusCloseTime)
+
 		}
 	}
 
@@ -892,7 +896,7 @@ func (c *Consensus) haveConsensus() bool {
 		if peerProp.Position == ourPosition {
 			agree++
 		} else {
-			log.Println(nid, " has ", peerProp.Position)
+			log.Println(nid[0], " has ", peerProp.Position[:2])
 			disagree++
 		}
 	}

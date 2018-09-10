@@ -39,7 +39,7 @@
 */
 //==============================================================================
 
-package consensus
+package sim
 
 import "time"
 
@@ -154,7 +154,10 @@ var (
 	useRoundedCloseTime = true
 )
 
-//SetUseRoundedCloseTime is only for testing.
-func SetUseRoundedCloseTime(y bool) {
-	useRoundedCloseTime = y
-}
+const (
+	//! How often we increase the close time resolution (in numbers of ledgers)
+	increaseLedgerTimeResolutionEvery = 8
+
+	//! How often we decrease the close time resolution (in numbers of ledgers)
+	decreaseLedgerTimeResolutionEvery = 1
+)

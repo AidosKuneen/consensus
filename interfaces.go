@@ -76,7 +76,7 @@ type TxSet interface {
 	// Return value should have semantics like Tx const *
 	Find(TxID) (TxT, error)
 	ID() TxSetID
-
+	Clone() TxSet
 	// Return set of transactions that are not common to this set or other
 	// boolean indicates which set it was in
 	// If true I have the tx, otherwiwse o has it.

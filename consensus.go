@@ -73,7 +73,12 @@ func shouldCloseLedger(
 	timeSincePrevClose time.Duration, // Time since last ledger's close time
 	openTime time.Duration, // Time waiting to close this ledger
 	idleInterval time.Duration) bool {
-	if (prevRoundTime < -1*time.Second) || (prevRoundTime > 10*time.Minute) /*|| (timeSincePrevClose > 10*time.Minute)*/ { //changed from original
+	log.Println("shouldCloseLedger? Trans=",
+		anyTransactions,
+		" Prop: ", prevProposers, "/", proposersClosed,
+		" Secs: ", timeSincePrevClose,
+		" (last: ", prevRoundTime, ")", "proposervalidated", proposersValidated)
+	if (prevRoundTime < -1*time.Second) || (prevRoundTime > 10*time.Minute) || (timeSincePrevClose > 10*time.Minute) { //maybe should change from original
 		// These are unexpected cases, we just close the ledger
 		log.Println("shouldCloseLedger Trans=",
 			anyTransactions,
@@ -132,6 +137,7 @@ func checkConsensusReached(
 	total uint,
 	countSelf bool,
 	minConsensusPct uint) bool {
+	log.Println("agree", agreeing, "total", total)
 	// If we are alone, we have a consensus
 	if total == 0 {
 		return true
@@ -142,7 +148,6 @@ func checkConsensusReached(
 	}
 
 	currentPercentage := (agreeing * 100) / total
-
 	return currentPercentage >= minConsensusPct
 }
 
