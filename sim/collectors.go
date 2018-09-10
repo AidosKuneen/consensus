@@ -47,6 +47,16 @@ import (
 	"github.com/AidosKuneen/consensus"
 )
 
+type collectorType func(consensus.NodeID, time.Time, interface{})
+
+type collectorRef []collectorType
+
+func (c collectorRef) on(node consensus.NodeID, when time.Time, e interface{}) {
+	for _, ct := range c {
+		ct(node, when, e)
+	}
+}
+
 type jumpCollectorByNode map[consensus.NodeID]jumpCollector
 
 func (s jumpCollectorByNode) on(id consensus.NodeID, when time.Time, e interface{}) {
@@ -68,140 +78,6 @@ func (s *simDurationCollector) on(NodeID, when time.Time, e interface{}) {
 	} else {
 		s.stop = when
 	}
-}
-
-type txCollector struct {
-	submitted uint
-	accepted  uint
-	validated uint
-	txs       map[consensus.TxID]*txTracker
-	// submitToAccept   *histgram
-	// submitToValidate *histgram
-}
-
-type txTracker struct {
-	t         *tx
-	submitted time.Time
-	accepted  time.Time
-	validated time.Time
-}
-
-func (c *txCollector) on(who consensus.NodeID, when time.Time, ee interface{}) {
-	switch v := ee.(type) {
-	case *submitTx:
-		if _, ok := c.txs[v.tx.id]; !ok {
-			c.txs[v.tx.id] = &txTracker{
-				t:         v.tx,
-				submitted: when,
-			}
-			c.submitted++
-		}
-	case *acceptLedger:
-		for tx := range v.ledger.(*ledger).txs {
-			tr, ok := c.txs[tx]
-			if ok && !tr.accepted.IsZero() {
-				tr.accepted = when
-				c.accepted++
-				// c.submitToAccept.insert(uint64(tr.accepted.Sub(tr.submitted)))
-			}
-		}
-	case *fullyValidateLedger:
-		for tx := range v.ledger.(*ledger).txs {
-			tr, ok := c.txs[tx]
-			if ok && !tr.validated.IsZero() {
-				if tr.accepted.IsZero() {
-					panic("not accepted")
-				}
-				tr.validated = when
-				c.validated++
-				// c.submitToValidate.insert(uint64(tr.validated.Sub(tr.submitted)))
-			}
-		}
-	}
-}
-func (c *txCollector) orphaned() int {
-	cnt := 0
-	for _, it := range c.txs {
-		if it.accepted.IsZero() {
-			cnt++
-		}
-	}
-	return cnt
-}
-func (c *txCollector) unvalidated() int {
-	cnt := 0
-	for _, it := range c.txs {
-		if it.validated.IsZero() {
-			cnt++
-		}
-	}
-	return cnt
-}
-
-type ledgerCollector struct {
-	accepted       uint
-	fullyValidated uint
-	ledgers        map[consensus.LedgerID]*ledgerTracker
-	// acceptToFullyValid     *histgram
-	// acceptToAccept         *histgram
-	// fullyValidToFullyValid *histgram
-}
-
-type ledgerTracker struct {
-	accepted       time.Time
-	fullyValidated time.Time
-}
-
-func (c *ledgerCollector) on(who consensus.NodeID, when time.Time, ee interface{}) {
-	switch v := ee.(type) {
-	case *acceptLedger:
-		if _, ok := c.ledgers[v.ledger.ID()]; ok {
-			return
-		}
-		c.ledgers[v.ledger.ID()] = &ledgerTracker{
-			accepted: when,
-		}
-		c.accepted++
-		// l := v.ledger.(*ledger)
-		// if v.prior.ID() == l.parentID {
-		// 	it, ok := c.ledgers[l.parentID]
-		// 	if ok {
-		// 		c.acceptToAccept.insert(uint64(when.Sub(it.accepted)))
-		// 	}
-		// }
-	case *fullyValidateLedger:
-		l := v.ledger.(*ledger)
-		if v.prior.ID() == l.parentID {
-			tr, ok := c.ledgers[v.ledger.ID()]
-			if !ok {
-				panic("not found")
-			}
-			// first time fully validated
-			if !tr.fullyValidated.IsZero() {
-				c.fullyValidated++
-				tr.fullyValidated = when
-				// c.acceptToFullyValid.insert(uint64(when.Sub(tr.accepted)))
-
-				parentTr, ok := c.ledgers[l.parentID]
-				if ok {
-					if !parentTr.fullyValidated.IsZero() {
-						// c.fullyValidToFullyValid.insert(
-						// 	uint64(when.Sub(parentTr.fullyValidated)))
-					}
-				}
-			}
-		}
-	}
-}
-
-func (c *ledgerCollector) unvalidated() int {
-	cnt := 0
-	for _, it := range c.ledgers {
-		if it.fullyValidated.IsZero() {
-			cnt++
-		}
-	}
-	return cnt
 }
 
 type jump struct {

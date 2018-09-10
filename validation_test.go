@@ -150,6 +150,7 @@ func (h *testHarness) makeNode() *nodeT {
 }
 
 func TestAddValidation1(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	a := newLedger("a")
 	ab := newLedger("ab")
@@ -226,6 +227,7 @@ func TestAddValidation1(t *testing.T) {
 }
 
 func TestAddValidation2(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	a := newLedger("a")
 	ab := newLedger("ab")
@@ -248,6 +250,7 @@ func TestAddValidation2(t *testing.T) {
 }
 
 func TestAddValidation3(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	a := newLedger("a")
 
@@ -268,6 +271,7 @@ func TestAddValidation3(t *testing.T) {
 	}
 }
 func TestAddValidation4(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	ab := newLedger("ab")
 	abc := newLedger("abc")
@@ -306,6 +310,7 @@ func TestAddValidation4(t *testing.T) {
 }
 
 func TestOnStale(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	a := newLedger("a")
 	ab := newLedger("ab")
@@ -361,6 +366,7 @@ func TestOnStale(t *testing.T) {
 	}
 }
 func TestGetNodesAfter(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	a := newLedger("a")
 	ab := newLedger("ab")
@@ -425,6 +431,7 @@ func TestGetNodesAfter(t *testing.T) {
 	}
 }
 func TestGetCurrentTrusted(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	a := newLedger("a")
 	b := newLedger("b")
@@ -527,6 +534,7 @@ func TestGetCurrentPublicKeys(t *testing.T) {
 	validationCurrentLocal = vc
 }
 func TestTrustedByLedgerFunctions(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 
 	harness := newTestHarness()
@@ -609,6 +617,7 @@ func TestTrustedByLedgerFunctions(t *testing.T) {
 }
 
 func TestExpire(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 
 	harness := newTestHarness()
@@ -630,6 +639,7 @@ func TestExpire(t *testing.T) {
 	validationSetExpires = e
 }
 func TestFlush(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 
 	harness := newTestHarness()
@@ -680,6 +690,7 @@ func TestFlush(t *testing.T) {
 }
 
 func TestGetPreferredLedger(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 
 	harness := newTestHarness()
@@ -781,6 +792,7 @@ func TestGetPreferredLedger(t *testing.T) {
 
 }
 func TestGetPreferredLCL(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 
 	harness := newTestHarness()
@@ -823,6 +835,7 @@ func TestGetPreferredLCL(t *testing.T) {
 	}
 }
 func TestAcquireValidatedLedger(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 
 	harness := newTestHarness()
@@ -899,6 +912,7 @@ func TestAcquireValidatedLedger(t *testing.T) {
 	}
 }
 func TestNumTrustedForLedger(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 
 	harness := newTestHarness()
@@ -922,6 +936,7 @@ func TestNumTrustedForLedger(t *testing.T) {
 	}
 }
 func TestSeqEnforcer(t *testing.T) {
+	ledgers = make(map[LedgerID]*tledger)
 	enf := &SeqEnforcer{}
 	if !enf.Try(time.Now(), 1) {
 		t.Error()
@@ -950,6 +965,7 @@ func TestSeqEnforcer(t *testing.T) {
 
 func TestTrustChanged(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	ledgers = make(map[LedgerID]*tledger)
 
 	harness := newTestHarness()
 	na := harness.makeNode()

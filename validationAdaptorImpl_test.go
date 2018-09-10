@@ -43,7 +43,6 @@ package consensus
 
 import (
 	"errors"
-	"log"
 	"time"
 )
 
@@ -57,10 +56,8 @@ type adaptorT struct {
 func (a *adaptorT) AcquireLedger(id LedgerID) (Ledger, error) {
 	l, ok := ledgers[id]
 	if !ok {
-		log.Println("not found", id)
 		return nil, errors.New("not found")
 	}
-	log.Println("found")
 	return l, nil
 }
 
