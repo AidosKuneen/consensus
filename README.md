@@ -3,12 +3,14 @@
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/AidosKuneen/consensus/master/LICENSE)
 [![Coverage Status](https://coveralls.io/repos/github/AidosKuneen/consensus/badge.svg?branch=master)](https://coveralls.io/github/AidosKuneen/consensus?branch=master)
 
-Ripple Consensus 
+Consensus 
 =====
 
 ## Overview
 
-This software is mostly a rewrite of a [Ripple Consensus](hhttps://github.com/ripple/rippled/tree/develop/src/ripple/consensus)
+This library is the consensus of AidosKunene.
+
+This software is mostly a rewrite of a [Ripple consensus](hhttps://github.com/ripple/rippled/tree/develop/src/ripple/consensus)
  in Golang.
 
 ## Requirements
