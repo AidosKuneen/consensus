@@ -142,11 +142,11 @@ type Consensus struct {
 	// Peer related consensus data
 
 	// Peer proposed positions for the current round
-	currPeerPositions map[NodeID]PeerPosition
+	currPeerPositions map[NodeID]*Proposal
 
 	// Recently received peer positions, available when transitioning between
 	// ledgers or rounds
-	recentPeerPositions map[NodeID][]PeerPosition
+	recentPeerPositions map[NodeID][]*Proposal
 
 	// The number of proposers who participated in the last consensus round
 	prevProposers uint
@@ -171,8 +171,8 @@ func NewConsensus(c clock, adaptor Adaptor) *Consensus {
 		adaptor:             adaptor,
 		acquired:            make(map[TxSetID]TxSet),
 		deadNodes:           make(map[NodeID]struct{}),
-		recentPeerPositions: make(map[NodeID][]PeerPosition),
-		currPeerPositions:   make(map[NodeID]PeerPosition),
+		recentPeerPositions: make(map[NodeID][]*Proposal),
+		currPeerPositions:   make(map[NodeID]*Proposal),
 		rawCloseTimes:       newConsensusCloseTimes(),
 	}
 }
@@ -234,7 +234,7 @@ func (c *Consensus) startRoundInternal(
 	c.convergePercent = 0
 	c.haveCloseTimeConsensus = false
 	c.openTime.reset(c.c.Now())
-	c.currPeerPositions = make(map[NodeID]PeerPosition)
+	c.currPeerPositions = make(map[NodeID]*Proposal)
 	c.acquired = make(map[TxSetID]TxSet)
 	c.rawCloseTimes.Peers = make(map[unixTime]int)
 	c.rawCloseTimes.Self = time.Time{}
@@ -258,8 +258,8 @@ func (c *Consensus) startRoundInternal(
 //  @param newProposal The new proposal from a peer
 //  @return Whether we should do delayed relay of this proposal.
 func (c *Consensus) PeerProposal(
-	now time.Time, newPeerPos PeerPosition) bool {
-	peerID := newPeerPos.Proposal().NodeID
+	now time.Time, newPeerPos *Proposal) bool {
+	peerID := newPeerPos.NodeID
 
 	// Always need to store recent positions
 	{
@@ -279,15 +279,13 @@ func (c *Consensus) PeerProposal(
  */
 func (c *Consensus) peerProposalInternal(
 	now time.Time,
-	newPeerPos PeerPosition) bool {
+	newPeerProp *Proposal) bool {
 	// Nothing to do for now if we are currently working on a ledger
 	if c.phase == phaseAccepted {
 		return false
 	}
 
 	c.now = now
-
-	newPeerProp := newPeerPos.Proposal()
 
 	peerID := newPeerProp.NodeID
 
@@ -307,7 +305,7 @@ func (c *Consensus) peerProposalInternal(
 		peerPosIt, ok := c.currPeerPositions[peerID]
 
 		if ok && newPeerProp.ProposeSeq <=
-			peerPosIt.Proposal().ProposeSeq {
+			peerPosIt.ProposeSeq {
 			return false
 		}
 
@@ -325,7 +323,7 @@ func (c *Consensus) peerProposalInternal(
 
 			return true
 		}
-		c.currPeerPositions[peerID] = newPeerPos
+		c.currPeerPositions[peerID] = newPeerProp
 		log.Println("added prop", len(c.currPeerPositions))
 	}
 
@@ -412,7 +410,7 @@ func (c *Consensus) GotTxSet(now time.Time, ts TxSet) {
 	}
 	any := false
 	for nid, pos := range c.currPeerPositions {
-		if pos.Proposal().Position == id {
+		if pos.Position == id {
 			c.updateDisputes(nid, ts)
 			any = true
 		}
@@ -493,7 +491,7 @@ func (c *Consensus) handleWrongLedger(lgrID LedgerID) {
 			c.result.compares = make(map[TxSetID]TxSet)
 		}
 
-		c.currPeerPositions = make(map[NodeID]PeerPosition)
+		c.currPeerPositions = make(map[NodeID]*Proposal)
 		c.rawCloseTimes.Peers = make(map[unixTime]int)
 		c.deadNodes = make(map[NodeID]struct{})
 
@@ -547,7 +545,7 @@ func (c *Consensus) checkLedger() {
 func (c *Consensus) playbackProposals() {
 	for _, it := range c.recentPeerPositions {
 		for _, pos := range it {
-			if pos.Proposal().PreviousLedger == c.prevLedgerID &&
+			if pos.PreviousLedger == c.prevLedgerID &&
 				c.peerProposalInternal(c.now, pos) {
 				c.adaptor.SharePosition(pos)
 			}
@@ -684,7 +682,7 @@ func (c *Consensus) closeLedger() {
 
 	// Create disputes with any peer positions we have transactions for
 	for _, pit := range c.currPeerPositions {
-		pos := pit.Proposal().Position
+		pos := pit.Position
 		it, ok := c.acquired[pos]
 		if ok {
 			c.createDisputes(it)
@@ -725,8 +723,7 @@ func (c *Consensus) updateOurPositions() {
 	// Verify freshness of peer positions and compute close times
 	closeTimeVotes := make(map[unixTime]int)
 	{
-		for nid, pos := range c.currPeerPositions {
-			peerProp := pos.Proposal()
+		for nid, peerProp := range c.currPeerPositions {
 			if peerProp.isStale(peerCutoff) {
 				// peer's proposal is stale, so remove it
 				peerID := peerProp.NodeID
@@ -865,8 +862,7 @@ func (c *Consensus) updateOurPositions() {
 			if !c.result.Position.isBowOut() {
 				c.adaptor.ShareTxset(c.result.Txns)
 			}
-			for nid, pos := range c.currPeerPositions {
-				p := pos.Proposal()
+			for nid, p := range c.currPeerPositions {
 				if p.Position == newID {
 					c.updateDisputes(nid, c.result.Txns)
 				}
@@ -892,8 +888,7 @@ func (c *Consensus) haveConsensus() bool {
 
 	ourPosition := c.result.Position.Position
 	// Count number of agreements/disagreements with our position
-	for nid, pos := range c.currPeerPositions {
-		peerProp := pos.Proposal()
+	for nid, peerProp := range c.currPeerPositions {
 		if peerProp.Position == ourPosition {
 			agree++
 		} else {
@@ -1003,8 +998,7 @@ func (c *Consensus) createDisputes(o TxSet) {
 		dtx := newDisputedTx(tx, ok, num)
 
 		// Update all of the available peer's votes on the disputed transaction
-		for nid, pos := range c.currPeerPositions {
-			peerProp := pos.Proposal()
+		for nid, peerProp := range c.currPeerPositions {
 			cit, ok := c.acquired[peerProp.Position]
 			if ok {
 				_, ok2 = cit[txID]

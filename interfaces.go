@@ -70,11 +70,6 @@ type TxT interface {
 	ID() TxID
 }
 
-//PeerPosition wraps a peer's ConsensusProposal
-type PeerPosition interface {
-	Proposal() *Proposal
-}
-
 //The ValidationAdaptor template implements a set of helper functions that
 //plug the consensus algorithm into a specific application.  It also identifies
 //the types that play important roles in Consensus (transactions, ledgers, ...).
@@ -140,7 +135,7 @@ type Adaptor interface {
 	Propose(*Proposal)
 
 	// Share a received peer proposal with other peer's.
-	SharePosition(PeerPosition)
+	SharePosition(*Proposal)
 
 	// Share a disputed transaction with peers
 	ShareTx(TxT)

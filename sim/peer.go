@@ -50,14 +50,6 @@ import (
 	"github.com/AidosKuneen/consensus"
 )
 
-type position struct {
-	proposal *consensus.Proposal
-}
-
-func (p *position) Proposal() *consensus.Proposal {
-	return p.proposal
-}
-
 type processingDelays struct {
 	ledgerAccept   time.Duration
 	recvValidation time.Duration
@@ -488,8 +480,8 @@ func (p *peer) share(m interface{}) {
 }
 
 // Unwrap the Position and share the raw proposal
-func (p *peer) SharePosition(pos consensus.PeerPosition) {
-	p.share(pos.Proposal().Clone())
+func (p *peer) SharePosition(pos *consensus.Proposal) {
+	p.share(pos.Clone())
 }
 
 // Unwrap the Position and share the raw proposal
@@ -633,9 +625,7 @@ func (p *peer) handle(vv interface{}) bool {
 		p.peerPositions[v.PreviousLedger] = append(p.peerPositions[v.PreviousLedger], v)
 
 		// Rely on consensus to decide whether to relay
-		return p.consensus.PeerProposal(p.now(), &position{
-			proposal: v,
-		})
+		return p.consensus.PeerProposal(p.now(), v)
 	case consensus.TxSet:
 		id := v.ID()
 		log.Println("peer", p.id[0], "handling a txset", id[:2])
