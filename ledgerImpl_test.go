@@ -41,78 +41,46 @@
 
 package consensus
 
-import (
-	"time"
-)
+import "log"
 
-var ledgers = make(map[LedgerID]*tledger)
+var ledgers = make(map[LedgerID]*Ledger)
 
-type tledger struct {
-	id   LedgerID
-	seq  Seq
-	prev LedgerID
-}
-
-func (l *tledger) ID() LedgerID {
-	return l.id
-}
-
-func (l *tledger) Seq() Seq {
-	return l.seq
-}
-
-func (l *tledger) CloseTimeResolution() time.Duration {
-	return 0
-}
-
-func (l *tledger) CloseAgree() bool {
-	return false
-}
-
-func (l *tledger) CloseTime() time.Time {
-	return time.Time{}
-}
-
-func (l *tledger) ParentCloseTime() time.Time {
-	return time.Time{}
-}
-
-func (l *tledger) IndexOf(s Seq) LedgerID {
-	if s == 0 {
-		return GenesisID
-	}
-	for lid := l.id; lid != GenesisID; lid = ledgers[lid].prev {
-		if ledgers[lid].Seq() == s {
-			return ledgers[lid].id
+func indexOf(l2 *Ledger) func(s Seq) LedgerID {
+	return func(s Seq) LedgerID {
+		var pa *Ledger
+		var ok bool
+		for pa = l2; pa.Seq != s; {
+			if pa, ok = ledgers[pa.ParentID]; !ok {
+				log.Fatal("not found", pa.ParentID)
+			}
+			if pa.Seq == 0 && s != 0 {
+				log.Fatal("not found", pa.ParentID)
+			}
 		}
+		return pa.ID()
 	}
-	panic("not found")
 }
 
-func newLedger(path string) *tledger {
-	var l *tledger
-	pre := GenesisID
-	var id LedgerID
+func newLedger(path string) *Ledger {
+	var l *Ledger
+	pre := Genesis
+	ledgers[pre.id] = pre
+
 	for i, p := range path {
-		id[0] = byte(p + 1 - 'a')
+		var id LedgerID
+		id[0] = byte(p - 'a' + 1)
 		if ll, ok := ledgers[id]; ok {
 			l = ll
 		} else {
-			l = &tledger{
-				id:   id,
-				seq:  Seq(i + 1),
-				prev: pre,
+			l = &Ledger{
+				ParentID: pre.ID(),
+				Seq:      Seq(i + 1),
+				id:       id,
 			}
+			l.IndexOf = indexOf(l)
 			ledgers[id] = l
 		}
-		pre = id
+		pre = l
 	}
 	return l
-}
-
-//GenesisLedger is the genesis.
-var genesisLedger = &tledger{
-	id:   GenesisID,
-	seq:  0,
-	prev: GenesisID,
 }

@@ -78,7 +78,7 @@ type valAdaptor struct {
 	p *peer
 }
 
-func (a *valAdaptor) AcquireLedger(id consensus.LedgerID) (consensus.Ledger, error) {
+func (a *valAdaptor) AcquireLedger(id consensus.LedgerID) (*consensus.Ledger, error) {
 	return a.p.AcquireLedger(id)
 }
 
@@ -126,17 +126,17 @@ type peer struct {
 	openTxs consensus.TxSet
 
 	//! The last ledger closed by this node
-	lastClosedLedger consensus.Ledger
+	lastClosedLedger *consensus.Ledger
 
 	//! Ledgers this node has closed or loaded from the network
-	ledgers map[consensus.LedgerID]consensus.Ledger
+	ledgers map[consensus.LedgerID]*consensus.Ledger
 
 	//! Validations from trusted nodes
 	validations *consensus.Validations
 
 	//! The most recent ledger that has been fully validated by the network from
 	//! the perspective of this Peer
-	fullyValidatedLedger *ledger
+	fullyValidatedLedger *consensus.Ledger
 
 	//-------------------------------------------------------------------------
 	// Store most network messages; these could be purged if memory use ever
@@ -205,10 +205,10 @@ func newPeer(i consensus.NodeID, s *scheduler, o *ledgerOracle, n *basicNetwork,
 		},
 		net:                  n,
 		trustGraph:           tg,
-		lastClosedLedger:     genesis,
-		fullyValidatedLedger: genesis,
+		lastClosedLedger:     consensus.Genesis,
+		fullyValidatedLedger: consensus.Genesis,
 		collectors:           c,
-		ledgers:              make(map[consensus.LedgerID]consensus.Ledger),
+		ledgers:              make(map[consensus.LedgerID]*consensus.Ledger),
 		txInjections:         make(map[consensus.Seq]*tx),
 		acquiringLedgers:     make(map[consensus.LedgerID]time.Time),
 		acquiringTxSets:      make(map[consensus.TxSetID]time.Time),
@@ -224,7 +224,7 @@ func newPeer(i consensus.NodeID, s *scheduler, o *ledgerOracle, n *basicNetwork,
 	p.consensus = consensus.NewConsensus(s.clock, p)
 	p.validations = consensus.NewValidations(&valAdaptor{
 		p: p,
-	}, p.scheduler.clock, genesis)
+	}, p.scheduler.clock)
 	p.ledgers[consensus.GenesisID] = p.lastClosedLedger
 	tg.trust(p, p)
 	return p
@@ -251,10 +251,10 @@ func (p *peer) trusts(oID consensus.NodeID) bool {
 	}
 	return false
 }
-func (p *peer) AcquireLedger(ledgerID consensus.LedgerID) (consensus.Ledger, error) {
+func (p *peer) AcquireLedger(ledgerID consensus.LedgerID) (*consensus.Ledger, error) {
 	it, ok := p.ledgers[ledgerID]
 	if ok {
-		return it.(*ledger).clone(), nil
+		return it.Clone(), nil
 	}
 	// No peers
 	if len(p.net.link(p)) == 0 {
@@ -342,14 +342,14 @@ func (p *peer) HasOpenTransactions() bool {
 func (p *peer) ProposersValidated(prevLedger consensus.LedgerID) uint {
 	return p.validations.NumTrustedForLedger(prevLedger)
 }
-func (p *peer) ProposersFinished(prevLedger consensus.Ledger, prevLedgerID consensus.LedgerID) uint {
+func (p *peer) ProposersFinished(prevLedger *consensus.Ledger, prevLedgerID consensus.LedgerID) uint {
 	return uint(p.validations.GetNodesAfter(prevLedger, prevLedgerID))
 }
 
-func (p *peer) OnClose(prevLedger consensus.Ledger, closeTime time.Time,
+func (p *peer) OnClose(prevLedger *consensus.Ledger, closeTime time.Time,
 	mode consensus.Mode) *consensus.Result {
 	p.issue(&closeLedger{
-		prevLedger: prevLedger.(*ledger).clone(),
+		prevLedger: prevLedger.Clone(),
 		txSetType:  p.openTxs.Clone(),
 	})
 	txns := p.openTxs.Clone()
@@ -367,13 +367,13 @@ func (p *peer) OnClose(prevLedger consensus.Ledger, closeTime time.Time,
 		},
 	}
 }
-func (p *peer) OnForceAccept(result *consensus.Result, prevLedger consensus.Ledger,
+func (p *peer) OnForceAccept(result *consensus.Result, prevLedger *consensus.Ledger,
 	closeResolution time.Duration, rawCloseTime *consensus.CloseTimes,
 	mode consensus.Mode) {
 	p.OnAccept(result, prevLedger, closeResolution, rawCloseTime, mode)
 }
 
-func (p *peer) OnAccept(result *consensus.Result, prevLedger consensus.Ledger,
+func (p *peer) OnAccept(result *consensus.Result, prevLedger *consensus.Ledger,
 	closeResolution time.Duration, rawCloseTime *consensus.CloseTimes,
 	mode consensus.Mode) {
 	log.Println("onaccept pid", p.id[0], "txset", result.Position.Position[:2], "prev", prevLedger.ID()[0], "closetime", rawCloseTime)
@@ -381,24 +381,22 @@ func (p *peer) OnAccept(result *consensus.Result, prevLedger consensus.Ledger,
 		proposing := mode == consensus.ModeProposing
 		consensusFail := result.State == consensus.StateMovedOn
 
-		acceptedTxs := p.injectTxs(prevLedger.(*ledger), result.Txns)
+		acceptedTxs := p.injectTxs(prevLedger, result.Txns)
 		newLedger := p.oracle.accept(
-			prevLedger.(*ledger),
+			prevLedger,
 			acceptedTxs,
 			closeResolution,
 			result.Position.CloseTime)
-		p.ledgers[newLedger.id] = newLedger
+		p.ledgers[newLedger.ID()] = newLedger.Ledger
 
 		p.issue(&acceptLedger{
-			ledger: newLedger,
+			ledger: newLedger.Ledger,
 			prior:  p.lastClosedLedger,
 		},
 		)
 		p.prevProposers = int(result.Proposers)
 		p.prevRoundTime = result.RoundTime
-		p.lastClosedLedger = newLedger
-		lid := p.lastClosedLedger.ID()
-		log.Println("newledger pid", p.id[0], "ledgerid", newLedger.id[:2], "lastclosed id", lid[:2], "seq", newLedger.seq)
+		p.lastClosedLedger = newLedger.Ledger
 
 		for id := range p.openTxs {
 			if _, ok := acceptedTxs[id]; ok {
@@ -408,16 +406,16 @@ func (p *peer) OnAccept(result *consensus.Result, prevLedger consensus.Ledger,
 
 		// Only send validation if the new ledger is compatible with our
 		// fully validated ledger
-		isCompatible := newLedger.isAncestor(p.fullyValidatedLedger)
+		isCompatible := newLedger.IsAncestor(p.fullyValidatedLedger)
 
 		// Can only send one validated ledger per seq
 		if p.runAsValidator && isCompatible && !consensusFail &&
-			p.seqEnforcer.Try(p.scheduler.clock.Now(), newLedger.seq) {
+			p.seqEnforcer.Try(p.scheduler.clock.Now(), newLedger.Seq) {
 			isFull := proposing
 
 			v := validationT{
-				id:       newLedger.id,
-				seq:      newLedger.seq,
+				id:       newLedger.ID(),
+				seq:      newLedger.Seq,
 				signTime: p.now(),
 				seenTime: p.now(),
 				key:      p.key,
@@ -430,7 +428,7 @@ func (p *peer) OnAccept(result *consensus.Result, prevLedger consensus.Ledger,
 			p.addTrustedValidation(&v)
 		}
 
-		p.checkFullyValidated(newLedger)
+		p.checkFullyValidated(newLedger.Ledger)
 
 		// kick off the next round...
 		// in the actual implementation, this passes back through
@@ -445,15 +443,15 @@ func (p *peer) OnAccept(result *consensus.Result, prevLedger consensus.Ledger,
 }
 
 func (p *peer) earliestAllowedSeq() consensus.Seq {
-	return p.fullyValidatedLedger.seq
+	return p.fullyValidatedLedger.Seq
 }
 
 func (p *peer) GetPrevLedger(
 	ledgerID consensus.LedgerID,
-	ledger consensus.Ledger,
+	ledger *consensus.Ledger,
 	mode consensus.Mode) consensus.LedgerID {
 	// only do if we are past the genesis ledger
-	if ledger.Seq() == 0 {
+	if ledger.Seq == 0 {
 		return ledgerID
 	}
 
@@ -521,21 +519,21 @@ func (p *peer) addTrustedValidation(v *validationT) bool {
 
 	// Acquire will try to get from network if not already local
 	if lgr, err := p.AcquireLedger(v.LedgerID()); err == nil {
-		p.checkFullyValidated(lgr.(*ledger))
+		p.checkFullyValidated(lgr)
 	}
 	return true
 }
 
 /** Check if a new ledger can be deemed fully validated */
-func (p *peer) checkFullyValidated(ledger *ledger) {
+func (p *peer) checkFullyValidated(ledger *consensus.Ledger) {
 	// Only consider ledgers newer than our last fully validated ledger
-	if ledger.seq <= p.fullyValidatedLedger.seq {
+	if ledger.Seq <= p.fullyValidatedLedger.Seq {
 		return
 	}
-	count := p.validations.NumTrustedForLedger(ledger.id)
+	count := p.validations.NumTrustedForLedger(ledger.ID())
 	numTrustedPeers := p.trustGraph.graph.outDegree(p)
 	p.quorum = int(math.Ceil(float64(numTrustedPeers) * 0.8))
-	if count >= uint(p.quorum) && ledger.isAncestor(p.fullyValidatedLedger) {
+	if count >= uint(p.quorum) && ledger.IsAncestor(p.fullyValidatedLedger) {
 		p.issue(&fullyValidateLedger{
 			ledger: ledger,
 			prior:  p.fullyValidatedLedger,
@@ -652,7 +650,7 @@ func (p *peer) handle(vv interface{}) bool {
 	case *tx:
 		log.Println("peer", p.id[0], "handling tx", v.id[:2])
 		// Ignore and suppress relay of transactions already in last ledger
-		lastClosedTxs := p.lastClosedLedger.(*ledger).txs
+		lastClosedTxs := p.lastClosedLedger.Txs
 		if _, ok := lastClosedTxs[v.id]; ok {
 			return false
 		}
@@ -745,8 +743,8 @@ func (p *peer) PrevLedgerID() consensus.LedgerID {
   @return Consensus TxSet with inject transactions added if prevLedger.seq
           matches a previously registered Tx.
 */
-func (p *peer) injectTxs(prevLedger *ledger, src consensus.TxSet) consensus.TxSet {
-	it, ok := p.txInjections[prevLedger.seq]
+func (p *peer) injectTxs(prevLedger *consensus.Ledger, src consensus.TxSet) consensus.TxSet {
+	it, ok := p.txInjections[prevLedger.Seq]
 
 	if !ok {
 		return src

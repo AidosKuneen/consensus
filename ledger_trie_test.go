@@ -47,10 +47,10 @@ import (
 )
 
 func TestInsert1(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	tl := newLedger("abc")
 	lt.insert(tl, 1)
 	if err := lt.checkInvariants(); err != nil {
@@ -74,11 +74,11 @@ func TestInsert1(t *testing.T) {
 	}
 }
 func TestInsert2(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Suffix of existing (extending tree)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	tl := newLedger("abc")
 	lt.insert(tl, 1)
 	if err := lt.checkInvariants(); err != nil {
@@ -130,11 +130,11 @@ func TestInsert2(t *testing.T) {
 	}
 }
 func TestInsert3(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// uncommitted of existing node
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	tl := newLedger("abcd")
 	lt.insert(tl, 1)
 	if err := lt.checkInvariants(); err != nil {
@@ -185,11 +185,11 @@ func TestInsert3(t *testing.T) {
 	}
 }
 func TestInsert4(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Suffix + uncommitted of existing node
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	tl := newLedger("abcd")
 	lt.insert(tl, 1)
 	if err := lt.checkInvariants(); err != nil {
@@ -225,10 +225,10 @@ func TestInsert4(t *testing.T) {
 
 // Suffix + uncommitted with existing child
 func TestInsert5(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	tl := newLedger("abcd")
 	lt.insert(tl, 1)
 	if err := lt.checkInvariants(); err != nil {
@@ -276,10 +276,10 @@ func TestInsert5(t *testing.T) {
 
 // Multiple counts
 func TestInsert6(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	tl := newLedger("ab")
 	lt.insert(tl, 4)
 	if err := lt.checkInvariants(); err != nil {
@@ -321,10 +321,10 @@ func TestInsert6(t *testing.T) {
 
 // Not in trie
 func TestRemove1(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 
 	tl := newLedger("abc")
 	lt.insert(tl, 1)
@@ -346,10 +346,10 @@ func TestRemove1(t *testing.T) {
 
 // In trie but with 0 tip support
 func TestRemove2(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 
 	tl := newLedger("abcd")
 	lt.insert(tl, 1)
@@ -380,10 +380,10 @@ func TestRemove2(t *testing.T) {
 
 // In trie with > 1 tip support
 func TestRemove3(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 
 	tl := newLedger("abc")
 	lt.insert(tl, 2)
@@ -430,10 +430,10 @@ func TestRemove3(t *testing.T) {
 }
 
 func TestRemove4(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 
 	tl := newLedger("ab")
 	lt.insert(tl, 1)
@@ -473,10 +473,10 @@ func TestRemove4(t *testing.T) {
 }
 
 func TestRemove5(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 
 	tl := newLedger("ab")
 	lt.insert(tl, 1)
@@ -519,10 +519,10 @@ func TestRemove5(t *testing.T) {
 }
 
 func TestRemove6(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 
 	tl := newLedger("ab")
 	lt.insert(tl, 1)
@@ -556,10 +556,10 @@ func TestRemove6(t *testing.T) {
 
 // In trie with = 1 tip support, parent compaction
 func TestRemove7(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 
 	tl := newLedger("ab")
 	lt.insert(tl, 1)
@@ -602,10 +602,10 @@ func TestRemove7(t *testing.T) {
 
 // In trie with = 1 tip support, parent compaction
 func TestSupport(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Single entry by itself
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 
 	tl := newLedger("a")
 	if lt.tipSupport(tl) != 0 {

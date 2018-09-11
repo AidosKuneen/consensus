@@ -200,7 +200,7 @@ type Validations struct {
 
 	// Last (validated) ledger successfully acquired. If in this map, it is
 	// accounted for in the trie.
-	lastLedger map[NodeID]Ledger
+	lastLedger map[NodeID]*Ledger
 
 	// Set of ledgers being acquired from the network
 	acquiring map[seqLedgerID]map[NodeID]struct{}
@@ -241,7 +241,7 @@ func (v *Validations) checkAcquired() {
 }
 
 // Update the trie to reflect a new validated ledger
-func (v *Validations) updateTrie(nodeID NodeID, l Ledger) {
+func (v *Validations) updateTrie(nodeID NodeID, l *Ledger) {
 	oldl, ok := v.lastLedger[nodeID]
 	v.lastLedger[nodeID] = l
 	if ok {
@@ -374,15 +374,15 @@ func (v *Validations) loopByLedger(id LedgerID, pre func(int), f func(NodeID, Va
 //   @param p ValidationParms to control staleness/expiration of validations
 //   @param c Clock to use for expiring validations stored by ledger
 //   @param ts Parameters for constructing Adaptor instance
-func NewValidations(a ValidationAdaptor, c clock, genesis Ledger) *Validations {
+func NewValidations(a ValidationAdaptor, c clock) *Validations {
 	return &Validations{
 		byLedger:     newAgedMap(c),
 		Adaptor:      a,
 		current:      make(map[NodeID]Validation),
 		seqEnforcers: make(map[NodeID]SeqEnforcer),
-		lastLedger:   make(map[NodeID]Ledger),
+		lastLedger:   make(map[NodeID]*Ledger),
 		acquiring:    make(map[seqLedgerID]map[NodeID]struct{}),
-		trie:         newLedgerTrie(genesis),
+		trie:         newLedgerTrie(),
 	}
 }
 
@@ -490,7 +490,7 @@ func (v *Validations) TrustChanged(added, removed map[NodeID]struct{}) {
 //   @return The sequence and id of the preferred working ledger,
 //           or Seq{0},ID{0} if no trusted validations are available to
 //           determine the preferred ledger.
-func (v *Validations) GetPreferred(curr Ledger) (Seq, LedgerID) {
+func (v *Validations) GetPreferred(curr *Ledger) (Seq, LedgerID) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	var preferred *spanTip
@@ -522,14 +522,14 @@ func (v *Validations) GetPreferred(curr Ledger) (Seq, LedgerID) {
 
 	// If we are the parent of the preferred ledger, stick with our
 	// current ledger since we might be about to generate it
-	if preferred.seq == curr.Seq()+1 &&
-		preferred.ancestor(curr.Seq()) == curr.ID() {
-		return curr.Seq(), curr.ID()
+	if preferred.seq == curr.Seq+1 &&
+		preferred.ancestor(curr.Seq) == curr.ID() {
+		return curr.Seq, curr.ID()
 	}
 
 	// A ledger ahead of us is preferred regardless of whether it is
 	// a descendant of our working ledger or it is on a different chain
-	if preferred.seq > curr.Seq() {
+	if preferred.seq > curr.Seq {
 		return preferred.seq, preferred.id
 	}
 	// Only switch to earlier or same sequence number
@@ -538,7 +538,7 @@ func (v *Validations) GetPreferred(curr Ledger) (Seq, LedgerID) {
 		return preferred.seq, preferred.id
 	}
 	// Stick with current ledger
-	return curr.Seq(), curr.ID()
+	return curr.Seq, curr.ID()
 }
 
 // GetPreferred2 Gets the ID of the preferred working ledger that exceeds a minimum valid
@@ -547,7 +547,7 @@ func (v *Validations) GetPreferred(curr Ledger) (Seq, LedgerID) {
 //   @param minValidSeq Minimum allowed sequence number
 //   @return ID Of the preferred ledger, or curr if the preferred ledger
 //              is not valid
-func (v *Validations) GetPreferred2(curr Ledger, minValidSeq Seq) LedgerID {
+func (v *Validations) GetPreferred2(curr *Ledger, minValidSeq Seq) LedgerID {
 	preferredSeq, preferredID := v.GetPreferred(curr)
 	if preferredSeq >= minValidSeq && preferredID != GenesisID {
 		return preferredID
@@ -566,7 +566,7 @@ func (v *Validations) GetPreferred2(curr Ledger, minValidSeq Seq) LedgerID {
 //   @return The preferred last closed ledger ID
 //   @note The minSeq does not apply to the peerCounts, since this function
 //         does not know their sequence number
-func (v *Validations) GetPreferredLCL(lcl Ledger, minSeq Seq,
+func (v *Validations) GetPreferredLCL(lcl *Ledger, minSeq Seq,
 	peerCounts map[LedgerID]uint32) LedgerID {
 	preferredSeq, preferredID := v.GetPreferred(lcl)
 	// Trusted validations exist
@@ -602,7 +602,7 @@ func (v *Validations) GetPreferredLCL(lcl Ledger, minSeq Seq,
 //           of the preferred ledger
 //   @note If ledger.id() != ledgerID, only counts immediate child ledgers of
 //         ledgerID
-func (v *Validations) GetNodesAfter(l Ledger, id LedgerID) uint32 {
+func (v *Validations) GetNodesAfter(l *Ledger, id LedgerID) uint32 {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 
@@ -616,8 +616,8 @@ func (v *Validations) GetNodesAfter(l Ledger, id LedgerID) uint32 {
 	}
 	// Count parent ledgers as fallback
 	for _, curr := range v.lastLedger {
-		if curr.Seq() > 0 &&
-			curr.IndexOf(curr.Seq()-1) == id {
+		if curr.Seq > 0 &&
+			curr.IndexOf(curr.Seq-1) == id {
 			num++
 		}
 	}

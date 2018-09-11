@@ -42,8 +42,8 @@
 package sim
 
 import (
-	"bytes"
 	"encoding/binary"
+	"log"
 	"time"
 
 	"github.com/AidosKuneen/consensus"
@@ -71,174 +71,110 @@ import (
   number and close time.
 */
 type ledger struct {
-	id                  consensus.LedgerID
-	parentID            consensus.LedgerID
-	seq                 consensus.Seq
-	ancestors           []consensus.LedgerID
-	txs                 consensus.TxSet
-	closeTimeResolution time.Duration
-	closeTime           time.Time
-	closeTimeAgree      bool
-	parentCloseTime     time.Time
+	ancestors []consensus.LedgerID
+	*consensus.Ledger
 }
 
 var genesis = &ledger{
-	id:                  consensus.GenesisID,
-	closeTimeResolution: consensus.LedgerDefaultTimeResolution,
-	txs:                 make(consensus.TxSet),
-	closeTimeAgree:      true,
+	Ledger: consensus.Genesis,
 }
 
 func (l *ledger) clone() *ledger {
-	l2 := *l
-	l2.ancestors = make([]consensus.LedgerID, len(l.ancestors))
+	l2 := &ledger{
+		Ledger:    l.Ledger.Clone(),
+		ancestors: make([]consensus.LedgerID, len(l.ancestors)),
+	}
 	for i, a := range l.ancestors {
 		l2.ancestors[i] = a
 	}
-	l2.txs = l.txs.Clone()
-	return &l2
+	return l2
 }
 
-func (l *ledger) bytes() []byte {
-	bs := make([]byte, 8+32+8+8+1+32+8)
-	binary.LittleEndian.PutUint64(bs, uint64(l.seq))
-	id := l.txs.ID()
-	copy(bs[8:], id[:])
-	binary.LittleEndian.PutUint64(bs[8+32:], uint64(l.closeTimeResolution))
-	binary.LittleEndian.PutUint64(bs[8+32+8:], uint64(l.closeTime.Unix()))
-	if l.closeTimeAgree {
-		bs[8+32+8+8] = 1
+func (l *ledger) indexOf(s consensus.Seq) consensus.LedgerID {
+	if s == l.Seq {
+		return l.ID()
 	}
-	copy(bs[8+32+8+8+1:], l.parentID[:])
-	binary.LittleEndian.PutUint64(bs[8+32+8+8+1+32:], uint64(l.parentCloseTime.Unix()))
-	return bs
-}
-func (l *ledger) equals(l2 *ledger) bool {
-	return bytes.Equal(l.bytes(), l2.bytes())
-}
-func (l *ledger) less(l2 *ledger) bool {
-	return bytes.Compare(l.bytes(), l2.bytes()) < 0
-}
-func (l *ledger) ID() consensus.LedgerID {
-	return l.id
-}
-
-func (l *ledger) Seq() consensus.Seq {
-	return l.seq
-}
-
-func (l *ledger) CloseTimeResolution() time.Duration {
-	return l.closeTimeResolution
-}
-
-func (l *ledger) CloseAgree() bool {
-	return l.closeTimeAgree
-}
-
-func (l *ledger) CloseTime() time.Time {
-	return l.closeTime
-}
-
-func (l *ledger) ParentCloseTime() time.Time {
-	return l.parentCloseTime
-}
-
-func (l *ledger) IndexOf(s consensus.Seq) consensus.LedgerID {
-	if s == l.seq {
-		return l.id
-	}
-	if s > l.seq {
+	if s > l.Seq {
 		panic("not found")
 	}
 	return l.ancestors[s]
-}
-func (l *ledger) isAncestor(a *ledger) bool {
-	if a.seq < l.seq {
-		return l.IndexOf(a.seq) == a.id
-	}
-	return false
-}
-func mismatch(a, b *ledger) consensus.Seq {
-	var start consensus.Seq
-	end := a.seq + 1
-	if end > b.seq {
-		end = b.seq
-	}
-	count := end - start
-	for count > 0 {
-		step := count / 2
-		curr := start + step
-		if a.IndexOf(curr) == b.IndexOf(curr) {
-			curr++
-			start -= curr
-			count -= step + 1
-		} else {
-			count = step
-		}
-	}
-	return start
 }
 
 type ledgerOracle struct {
 	instances map[consensus.LedgerID]*ledger
 }
 
-func (l *ledgerOracle) nextID() consensus.LedgerID {
-	var id consensus.LedgerID
-	binary.LittleEndian.PutUint64(id[:], uint64(len(l.instances)+1))
-	return id
+func newLedgerOracle() *ledgerOracle {
+	return &ledgerOracle{
+		instances: map[consensus.LedgerID]*ledger{
+			consensus.GenesisID: genesis,
+		},
+	}
 }
 
-func (l *ledgerOracle) accept(parent *ledger, txs consensus.TxSet,
+// func (l *ledgerOracle) nextID() consensus.LedgerID {
+// 	var id consensus.LedgerID
+// 	binary.LittleEndian.PutUint64(id[:], uint64(len(l.instances)+1))
+// 	return id
+// }
+
+func (l *ledgerOracle) accept(parent *consensus.Ledger, txs consensus.TxSet,
 	closeTimeResolution time.Duration, consensusCloseTime time.Time) *ledger {
 	next := ledger{
-		txs: make(consensus.TxSet),
+		Ledger: &consensus.Ledger{
+			Txs: make(consensus.TxSet),
+		},
 	}
+	next.IndexOf = next.indexOf
 	for tid, t := range txs {
-		next.txs[tid] = t
+		next.Txs[tid] = t
 	}
-	next.seq = parent.seq + 1
-	next.closeTimeResolution = closeTimeResolution
-	next.closeTimeAgree = !consensusCloseTime.IsZero()
-	if next.closeTimeAgree {
-		next.closeTime = consensus.EffCloseTime(
-			consensusCloseTime, closeTimeResolution, parent.closeTime)
+	next.Seq = parent.Seq + 1
+	next.CloseTimeResolution = closeTimeResolution
+	next.CloseTimeAgree = !consensusCloseTime.IsZero()
+	if next.CloseTimeAgree {
+		next.CloseTime = consensus.EffCloseTime(
+			consensusCloseTime, closeTimeResolution, parent.CloseTime)
 	} else {
-		next.closeTime = parent.closeTime.Add(time.Second)
+		next.CloseTime = parent.CloseTime.Add(time.Second)
 	}
-	next.parentCloseTime = parent.closeTime
-	next.parentID = parent.id
-	next.ancestors = make([]consensus.LedgerID, len(parent.ancestors)+1)
-	copy(next.ancestors, parent.ancestors)
-	next.ancestors[len(parent.ancestors)] = parent.id
+	next.ParentCloseTime = parent.CloseTime
+	next.ParentID = parent.ID()
+	p, ok := l.instances[parent.ID()]
+	if !ok {
+		log.Fatal("not found", parent.ID())
+	}
+	next.ancestors = make([]consensus.LedgerID, len(p.ancestors)+1)
+	copy(next.ancestors, p.ancestors)
+	next.ancestors[len(p.ancestors)] = parent.ID()
 
 	for _, l := range l.instances {
-		if bytes.Equal(l.bytes(), next.bytes()) {
+		if l.ID() == next.ID() {
 			return l
 		}
 	}
-	next.id = l.nextID()
-	l.instances[next.id] = &next
+	// next.id = l.nextID()
+	l.instances[next.ID()] = &next
 	return &next
 }
 
 func (l *ledgerOracle) accept2(curr *ledger, t *tx) *ledger {
 	return l.accept(
-		curr,
+		curr.Ledger,
 		consensus.TxSet{
 			t.id: t,
 		},
-		curr.closeTimeResolution,
-		curr.closeTime.Add(time.Second))
+		curr.CloseTimeResolution,
+		curr.CloseTime.Add(time.Second))
 }
 func (l *ledgerOracle) lookup(id consensus.LedgerID) *ledger {
 	return l.instances[id]
 }
 
-func (l *ledgerOracle) branches(ledgers []*ledger) int {
+func (l *ledgerOracle) branches(ledgers []*consensus.Ledger) int {
 	// Tips always maintains the Ledgers with largest sequence number
 	// along all known chains.
-	tips := make([]*ledger, 0, len(ledgers))
+	tips := make([]*consensus.Ledger, 0, len(ledgers))
 
 	for _, l := range ledgers {
 		// Three options,
@@ -247,13 +183,13 @@ func (l *ledgerOracle) branches(ledgers []*ledger) int {
 		//  3. ledger is the new tip for a branch
 		found := false
 		for idx := 0; idx < len(tips) && !found; idx++ {
-			idxEarlier := tips[idx].seq < l.seq
+			idxEarlier := tips[idx].Seq < l.Seq
 			earlier := tips[idx]
 			later := l
 			if !idxEarlier {
 				earlier, later = later, earlier
 			}
-			if later.isAncestor(earlier) {
+			if later.IsAncestor(earlier) {
 				tips[idx] = later
 				found = true
 			}

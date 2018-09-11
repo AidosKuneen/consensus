@@ -56,7 +56,7 @@ type spanTip struct {
 	seq Seq
 	// The ID of the tip ledger
 	id     LedgerID
-	ledger Ledger
+	ledger *Ledger
 }
 
 /** Lookup the ID of an ancestor of the tip ledger
@@ -77,13 +77,13 @@ func (st *spanTip) ancestor(s Seq) LedgerID {
 type span struct {
 	start  Seq
 	end    Seq //1
-	ledger Ledger
+	ledger *Ledger
 }
 
-func newSpanFromLedger(l Ledger) *span {
+func newSpanFromLedger(l *Ledger) *span {
 	return &span{
 		ledger: l,
-		end:    l.Seq() + 1,
+		end:    l.Seq + 1,
 	}
 }
 
@@ -104,10 +104,10 @@ func (s *span) startID() LedgerID {
 
 // Return the ledger sequence number of the first possible difference
 // between this span and a given ledger.
-func (s *span) diff(o Ledger) Seq {
-	end := s.ledger.Seq()
-	if end > o.Seq() {
-		end = o.Seq()
+func (s *span) diff(o *Ledger) Seq {
+	end := s.ledger.Seq
+	if end > o.Seq {
+		end = o.Seq
 	}
 	var i Seq
 	for i = 0; i <= end; i++ {
@@ -184,8 +184,8 @@ type node struct {
 	parent        *node
 }
 
-func newNode(l Ledger) *node {
-	if l.Seq() == 0 {
+func newNode(l *Ledger) *node {
+	if l.Seq == 0 {
 		return &node{
 			span: newSpanFromLedger(l),
 		}
@@ -318,7 +318,7 @@ type ledgerTrie struct {
   @return Pair of the found node and the sequence number of the first
           ledger difference.
 */
-func (lt *ledgerTrie) find(l Ledger) (*node, Seq) {
+func (lt *ledgerTrie) find(l *Ledger) (*node, Seq) {
 	curr := lt.root
 	// Root is always defined and is in common with all ledgers
 	if curr == nil {
@@ -361,9 +361,9 @@ func (lt *ledgerTrie) dumpImpl(curr *node, offset int) string {
 	return str.String()
 }
 
-func newLedgerTrie(genesis Ledger) *ledgerTrie {
+func newLedgerTrie() *ledgerTrie {
 	return &ledgerTrie{
-		root:       newNode(genesis),
+		root:       newNode(Genesis),
 		seqSupport: make(map[Seq]uint32),
 	}
 }
@@ -373,7 +373,7 @@ func newLedgerTrie(genesis Ledger) *ledgerTrie {
   @param ledger A ledger and its ancestry
   @param count The count of support for this ledger
 */
-func (lt *ledgerTrie) insert(l Ledger, count /* =1 */ uint32) {
+func (lt *ledgerTrie) insert(l *Ledger, count /* =1 */ uint32) {
 	loc, diffSeq := lt.find(l)
 	// There is always a place to insert
 	if loc == nil {
@@ -446,7 +446,7 @@ func (lt *ledgerTrie) insert(l Ledger, count /* =1 */ uint32) {
 		incNode.branchSupport += count
 		incNode = incNode.parent
 	}
-	lt.seqSupport[l.Seq()] += count
+	lt.seqSupport[l.Seq] += count
 }
 
 /** Decrease support for a ledger, removing and compressing if possible.
@@ -456,7 +456,7 @@ func (lt *ledgerTrie) insert(l Ledger, count /* =1 */ uint32) {
 
   @return Whether a matching node was decremented and possibly removed.
 */
-func (lt *ledgerTrie) remove(l Ledger, count uint32 /* =1 */) bool {
+func (lt *ledgerTrie) remove(l *Ledger, count uint32 /* =1 */) bool {
 	loc, diffSeq := lt.find(l)
 
 	// Cannot erase root
@@ -464,7 +464,7 @@ func (lt *ledgerTrie) remove(l Ledger, count uint32 /* =1 */) bool {
 		return false
 	}
 	// Must be exact match with tip support
-	if diffSeq != loc.span.end || diffSeq <= l.Seq() ||
+	if diffSeq != loc.span.end || diffSeq <= l.Seq ||
 		loc.tipSupport == 0 {
 		return false
 	}
@@ -473,12 +473,12 @@ func (lt *ledgerTrie) remove(l Ledger, count uint32 /* =1 */) bool {
 	}
 	loc.tipSupport -= count
 
-	if sup, exist := lt.seqSupport[l.Seq()]; !exist || sup < count {
+	if sup, exist := lt.seqSupport[l.Seq]; !exist || sup < count {
 		panic("ledger not found")
 	}
-	lt.seqSupport[l.Seq()] -= count
-	if lt.seqSupport[l.Seq()] == 0 {
-		delete(lt.seqSupport, l.Seq())
+	lt.seqSupport[l.Seq] -= count
+	if lt.seqSupport[l.Seq] == 0 {
+		delete(lt.seqSupport, l.Seq)
 	}
 	decNode := loc
 	for decNode != nil {
@@ -513,11 +513,11 @@ loop:
   @param ledger The ledger to lookup
   @return The number of entries in the trie for this *exact* ledger
 */
-func (lt *ledgerTrie) tipSupport(l Ledger) uint32 {
+func (lt *ledgerTrie) tipSupport(l *Ledger) uint32 {
 	loc, diffSeq := lt.find(l)
 
 	// Exact match
-	if loc != nil && diffSeq == loc.span.end && diffSeq > l.Seq() {
+	if loc != nil && diffSeq == loc.span.end && diffSeq > l.Seq {
 		return loc.tipSupport
 	}
 	return 0
@@ -528,12 +528,12 @@ func (lt *ledgerTrie) tipSupport(l Ledger) uint32 {
 @param ledger The ledger to lookup
 @return The number of entries in the trie for this ledger or a descendant
 */
-func (lt *ledgerTrie) branchSupport(l Ledger) uint32 {
+func (lt *ledgerTrie) branchSupport(l *Ledger) uint32 {
 	loc, diffSeq := lt.find(l)
 	// Check that ledger is is an exact match or proper
 	// prefix of loc
-	if loc != nil && diffSeq > l.Seq() &&
-		l.Seq() < loc.span.end {
+	if loc != nil && diffSeq > l.Seq &&
+		l.Seq < loc.span.end {
 		return loc.branchSupport
 	}
 	return 0

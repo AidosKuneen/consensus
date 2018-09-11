@@ -106,14 +106,14 @@ type startRound struct {
 	bestLedger consensus.LedgerID
 
 	//! The prior ledger on hand
-	prevLedger consensus.Ledger
+	prevLedger *consensus.Ledger
 }
 
 /** Peer closed the open ledger
  */
 type closeLedger struct {
 	// The ledger closed on
-	prevLedger consensus.Ledger
+	prevLedger *consensus.Ledger
 
 	// Initial txs for including in ledger
 	txSetType consensus.TxSet
@@ -122,10 +122,10 @@ type closeLedger struct {
 //! Peer accepted consensus results
 type acceptLedger struct {
 	// The newly created ledger
-	ledger consensus.Ledger
+	ledger *consensus.Ledger
 
 	// The prior ledger (this is a jump if prior.id() != ledger.parentID())
-	prior consensus.Ledger
+	prior *consensus.Ledger
 }
 
 //! Peer detected a wrong prior ledger during consensus
@@ -139,9 +139,9 @@ type wrongPrevLedger struct {
 //! Peer fully validated a new ledger
 type fullyValidateLedger struct {
 	//! The new fully validated ledger
-	ledger consensus.Ledger
+	ledger *consensus.Ledger
 
 	//! The prior fully validated ledger
 	//! This is a jump if prior.id() != ledger.parentID()
-	prior consensus.Ledger
+	prior *consensus.Ledger
 }

@@ -49,10 +49,10 @@ import (
 )
 
 func TestGetPreferred1(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	p := lt.getPreferred(0)
 	if p.id != GenesisID {
 		t.Error("invalid getpreffered")
@@ -64,58 +64,59 @@ func TestGetPreferred1(t *testing.T) {
 }
 
 func TestGetPreferred2(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	lt.insert(abc, 1)
 	p := lt.getPreferred(3)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abc.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 }
+
 func TestGetPreferred3(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	lt.insert(abc, 1)
 	lt.insert(abcd, 1)
 	p := lt.getPreferred(3)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abc.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abc.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 }
 func TestGetPreferred4(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	lt.insert(abc, 1)
 	lt.insert(abcd, 2)
 	p := lt.getPreferred(3)
-	if p.id != abcd.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abcd.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != abcd.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abcd.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 }
 func TestGetPreferred5(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	abce := newLedger("abce")
@@ -123,29 +124,32 @@ func TestGetPreferred5(t *testing.T) {
 	lt.insert(abcd, 1)
 	lt.insert(abce, 1)
 	p := lt.getPreferred(3)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abc.ID() {
+		t.Log(abc.ID())
+		t.Log(abcd.ID())
+		t.Log(abce.ID())
+		t.Error("invalid getpreffered", p.id)
 	}
 	p = lt.getPreferred(4)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abc.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 
 	lt.insert(abc, 1)
 	p = lt.getPreferred(3)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abc.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abc.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 }
 func TestGetPreferred6(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	abce := newLedger("abce")
@@ -153,29 +157,32 @@ func TestGetPreferred6(t *testing.T) {
 	lt.insert(abcd, 2)
 	lt.insert(abce, 1)
 	p := lt.getPreferred(3)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abc.ID() {
+		t.Error("invalid getpreffered", p.id)
 	}
 	p = lt.getPreferred(4)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abc.ID() {
+		t.Log(abc.ID())
+		t.Log(abcd.ID())
+		t.Log(abce.ID())
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 
 	lt.insert(abcd, 1)
 	p = lt.getPreferred(3)
-	if p.id != abcd.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abcd.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != abcd.id {
-		t.Error("invalid getpreffered", p.seq, abc.seq)
+	if p.id != abcd.ID() {
+		t.Error("invalid getpreffered", p.seq, abc.Seq)
 	}
 }
 func TestGetPreferred7(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	abcd := newLedger("abcd")
 	abce := newLedger("abce")
 	lt.insert(abcd, 2)
@@ -186,22 +193,22 @@ func TestGetPreferred7(t *testing.T) {
 	}
 
 	p := lt.getPreferred(4)
-	if p.id != abce.id {
-		t.Error("invalid getpreffered", p.seq, abce.seq)
+	if p.id != abce.ID() {
+		t.Error("invalid getpreffered", p.seq, abce.Seq)
 	}
 	lt.insert(abcd, 1)
 
 	p = lt.getPreferred(4)
-	if p.id != abcd.id {
-		t.Error("invalid getpreffered", p.seq, abcd.seq)
+	if p.id != abcd.ID() {
+		t.Error("invalid getpreffered", p.seq, abcd.Seq)
 	}
 }
 
 func TestGetPreferred8(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	abce := newLedger("abce")
@@ -213,32 +220,32 @@ func TestGetPreferred8(t *testing.T) {
 		t.Fatal("invalid id")
 	}
 	p := lt.getPreferred(3)
-	if p.id != abce.id {
-		t.Error("invalid getpreffered", p.seq, abce.seq)
+	if p.id != abce.ID() {
+		t.Error("invalid getpreffered", p.seq, abce.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != abce.id {
-		t.Error("invalid getpreffered", p.seq, abce.seq)
+	if p.id != abce.ID() {
+		t.Error("invalid getpreffered", p.seq, abce.Seq)
 	}
 
 	lt.remove(abce, 1)
 	lt.insert(abcd, 1)
 
 	p = lt.getPreferred(3)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abcd.seq)
+	if p.id != abc.ID() {
+		t.Error("invalid getpreffered", p.seq, abcd.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != abc.id {
-		t.Error("invalid getpreffered", p.seq, abcd.seq)
+	if p.id != abc.ID() {
+		t.Error("invalid getpreffered", p.seq, abcd.Seq)
 	}
 }
 
 func TestGetPreferred9(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
 	abcde := newLedger("abcde")
@@ -246,20 +253,20 @@ func TestGetPreferred9(t *testing.T) {
 	lt.insert(abcd, 2)
 	lt.insert(abcde, 4)
 	p := lt.getPreferred(3)
-	if p.id != abcde.id {
-		t.Error("invalid getpreffered", p.seq, abcde.seq)
+	if p.id != abcde.ID() {
+		t.Error("invalid getpreffered", p.seq, abcde.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != abcde.id {
-		t.Error("invalid getpreffered", p.seq, abcde.seq)
+	if p.id != abcde.ID() {
+		t.Error("invalid getpreffered", p.seq, abcde.Seq)
 	}
 	p = lt.getPreferred(5)
-	if p.id != abcde.id {
-		t.Error("invalid getpreffered", p.seq, abcde.seq)
+	if p.id != abcde.ID() {
+		t.Error("invalid getpreffered", p.seq, abcde.Seq)
 	}
 }
 func TestGetPreferred10(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	/** Build the tree below with initial tip support annotated
 	        A
 	       / \
@@ -272,7 +279,7 @@ func TestGetPreferred10(t *testing.T) {
 	      G
 	*/
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 	a := newLedger("a")
 	ab := newLedger("ab")
 	ac := newLedger("ac")
@@ -286,20 +293,20 @@ func TestGetPreferred10(t *testing.T) {
 	lt.insert(abde, 2)
 
 	p := lt.getPreferred(1)
-	if p.id != ab.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != ab.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(2)
-	if p.id != ab.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != ab.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(3)
-	if p.id != a.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != a.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != a.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != a.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 
 	/** One of E advancing to G doesn't change anything
@@ -316,24 +323,24 @@ func TestGetPreferred10(t *testing.T) {
 	lt.remove(abde, 1)
 	lt.insert(abdeg, 1)
 	p = lt.getPreferred(1)
-	if p.id != ab.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != ab.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(2)
-	if p.id != ab.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != ab.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(3)
-	if p.id != a.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != a.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != a.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != a.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(5)
-	if p.id != a.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != a.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 
 	/** C advancing to H does advance the seq 3 preferred ledger
@@ -350,24 +357,24 @@ func TestGetPreferred10(t *testing.T) {
 	lt.remove(ac, 1)
 	lt.insert(abh, 1)
 	p = lt.getPreferred(1)
-	if p.id != ab.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != ab.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(2)
-	if p.id != ab.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != ab.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(3)
-	if p.id != ab.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != ab.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != a.id {
-		t.Fatal("invalid getpreffered", p.seq, a.seq)
+	if p.id != a.ID() {
+		t.Fatal("invalid getpreffered", p.seq, a.Seq)
 	}
 	p = lt.getPreferred(5)
-	if p.id != a.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != a.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 
 	/** F advancing to E also moves the preferred ledger forward
@@ -384,40 +391,40 @@ func TestGetPreferred10(t *testing.T) {
 	lt.remove(acf, 1)
 	lt.insert(abde, 1)
 	p = lt.getPreferred(1)
-	if p.id != abde.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != abde.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(2)
-	if p.id != abde.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != abde.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(3)
-	if p.id != abde.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != abde.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(4)
-	if p.id != ab.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != ab.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 	p = lt.getPreferred(5)
-	if p.id != ab.id {
-		t.Error("invalid getpreffered", p.seq, ab.seq)
+	if p.id != ab.ID() {
+		t.Error("invalid getpreffered", p.seq, ab.Seq)
 	}
 }
 
 // Since the root is a special node that breaks the no-single child
 // invariant, do some tests that exercise it.
 func TestRootRelated(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
-	if lt.remove(genesisLedger, 1) {
+	lt := newLedgerTrie()
+	if lt.remove(Genesis, 1) {
 		t.Error("invalid removal")
 	}
-	if lt.branchSupport(genesisLedger) != 0 {
+	if lt.branchSupport(Genesis) != 0 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(genesisLedger) != 0 {
+	if lt.tipSupport(Genesis) != 0 {
 		t.Error("invalid rootsuport")
 	}
 
@@ -426,10 +433,10 @@ func TestRootRelated(t *testing.T) {
 	if err := lt.checkInvariants(); err != nil {
 		t.Error(err)
 	}
-	if lt.branchSupport(genesisLedger) != 1 {
+	if lt.branchSupport(Genesis) != 1 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(genesisLedger) != 0 {
+	if lt.tipSupport(Genesis) != 0 {
 		t.Error("invalid rootsuport")
 	}
 
@@ -438,10 +445,10 @@ func TestRootRelated(t *testing.T) {
 	if err := lt.checkInvariants(); err != nil {
 		t.Error(err)
 	}
-	if lt.branchSupport(genesisLedger) != 2 {
+	if lt.branchSupport(Genesis) != 2 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(genesisLedger) != 0 {
+	if lt.tipSupport(Genesis) != 0 {
 		t.Error("invalid rootsuport")
 	}
 
@@ -451,17 +458,17 @@ func TestRootRelated(t *testing.T) {
 	if err := lt.checkInvariants(); err != nil {
 		t.Error(err)
 	}
-	if lt.branchSupport(genesisLedger) != 1 {
+	if lt.branchSupport(Genesis) != 1 {
 		t.Error("invalid rootsuport")
 	}
-	if lt.tipSupport(genesisLedger) != 0 {
+	if lt.tipSupport(Genesis) != 0 {
 		t.Error("invalid rootsuport")
 	}
 }
 func TestStress(t *testing.T) {
-	ledgers = make(map[LedgerID]*tledger)
+	ledgers = make(map[LedgerID]*Ledger)
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
-	lt := newLedgerTrie(genesisLedger)
+	lt := newLedgerTrie()
 
 	// Test quasi-randomly add/remove supporting for different ledgers
 	// from a branching history.
@@ -483,9 +490,9 @@ func TestStress(t *testing.T) {
 			curr += string(a)
 			offset = (a + 1) * width
 		}
-		var tl Ledger
+		var tl *Ledger
 		if curr == "" {
-			tl = genesisLedger
+			tl = Genesis
 		} else {
 			tl = newLedger(curr)
 		}

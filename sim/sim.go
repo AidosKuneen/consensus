@@ -75,9 +75,7 @@ func newSim() *sim {
 		},
 	}
 	s := &sim{
-		oracle: &ledgerOracle{
-			instances: make(map[consensus.LedgerID]*ledger),
-		},
+		oracle: newLedgerOracle(),
 		net: &basicNetwork{
 			links: &digraph{
 				graph: make(graphT),
@@ -139,7 +137,7 @@ func (s *sim) synchronized(g *peerGroup) bool {
 	sync := true
 	for _, p := range g.peers {
 		if p.lastClosedLedger.ID() != ref.lastClosedLedger.ID() ||
-			p.fullyValidatedLedger.id != ref.fullyValidatedLedger.id {
+			p.fullyValidatedLedger.ID() != ref.fullyValidatedLedger.ID() {
 			sync = false
 		}
 	}
@@ -150,7 +148,7 @@ func (s *sim) branches(g *peerGroup) int {
 		return 0
 	}
 	ledgers := make(map[consensus.LedgerID]struct{})
-	ls := make([]*ledger, 0, len(g.peers))
+	ls := make([]*consensus.Ledger, 0, len(g.peers))
 	for _, peer := range g.peers {
 		if _, ok := ledgers[peer.fullyValidatedLedger.ID()]; !ok {
 			ledgers[peer.fullyValidatedLedger.ID()] = struct{}{}

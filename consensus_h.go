@@ -130,7 +130,7 @@ type Consensus struct {
 	// Last validated ledger ID provided to consensus
 	prevLedgerID LedgerID
 	// Last validated ledger seen by consensus
-	previousLedger Ledger
+	previousLedger *Ledger
 
 	// Transaction Sets, indexed by hash of transaction tree
 	acquired map[TxSetID]TxSet
@@ -189,13 +189,13 @@ func NewConsensus(c clock, adaptor Adaptor) *Consensus {
 func (c *Consensus) StartRound(
 	now time.Time,
 	prevLedgerID LedgerID,
-	prevLedger Ledger,
+	prevLedger *Ledger,
 	nowUntrusted map[NodeID]struct{},
 	isProposing bool) {
 	if c.firstRound {
 		// take our initial view of closeTime_ from the seed ledger
 		c.prevRoundTime = ledgerIdleInterval
-		c.prevCloseTime = prevLedger.CloseTime()
+		c.prevCloseTime = prevLedger.CloseTime
 		c.firstRound = false
 	} else {
 		c.prevCloseTime = c.rawCloseTimes.Self
@@ -224,7 +224,7 @@ func (c *Consensus) StartRound(
 }
 
 func (c *Consensus) startRoundInternal(
-	now time.Time, prevLedgerID LedgerID, prevLedger Ledger, mode Mode) {
+	now time.Time, prevLedgerID LedgerID, prevLedger *Ledger, mode Mode) {
 	c.phase = phaseOpen
 	c.mode.set(mode, c.adaptor)
 	c.now = now
@@ -241,9 +241,9 @@ func (c *Consensus) startRoundInternal(
 	c.deadNodes = make(map[NodeID]struct{})
 
 	c.closeResolution = getNextLedgerTimeResolution(
-		c.previousLedger.CloseTimeResolution(),
-		c.previousLedger.CloseAgree(),
-		c.previousLedger.Seq()+1)
+		c.previousLedger.CloseTimeResolution,
+		c.previousLedger.CloseTimeAgree,
+		c.previousLedger.Seq+1)
 	c.playbackProposals()
 	if uint(len(c.currPeerPositions)) > (c.prevProposers / 2) {
 		// We may be falling behind, don't wait for the timer
@@ -572,13 +572,13 @@ func (c *Consensus) phaseOpen() {
 	var sinceClose time.Duration
 	previousCloseCorrect :=
 		(c.mode.mode != ModeWrongLedger) &&
-			c.previousLedger.CloseAgree() &&
-			(!c.previousLedger.CloseTime().Equal(
-				(c.previousLedger.ParentCloseTime().Add(1 * time.Second))))
+			c.previousLedger.CloseTimeAgree &&
+			(!c.previousLedger.CloseTime.Equal(
+				(c.previousLedger.ParentCloseTime.Add(1 * time.Second))))
 
 	lastCloseTime := c.prevCloseTime // use the time we saw internally
 	if previousCloseCorrect {
-		lastCloseTime = c.previousLedger.CloseTime() // use consensus timing
+		lastCloseTime = c.previousLedger.CloseTime // use consensus timing
 	}
 
 	if c.now.After(lastCloseTime) || c.now.Equal(lastCloseTime) {
@@ -586,7 +586,7 @@ func (c *Consensus) phaseOpen() {
 	} else {
 		sinceClose = -lastCloseTime.Sub(c.now)
 	}
-	idleInterval := 2 * c.previousLedger.CloseTimeResolution()
+	idleInterval := 2 * c.previousLedger.CloseTimeResolution
 	if idleInterval < ledgerIdleInterval {
 		idleInterval = ledgerIdleInterval
 	}
@@ -807,7 +807,8 @@ func (c *Consensus) updateOurPositions() {
 			" thrC:", threshConsensus)
 
 		for tim, cnt := range closeTimeVotes {
-			log.Println("CCTime: seq ", c.previousLedger.Seq()+1, ": ",
+			log.Println(tim, time.Unix(int64(tim), 0).IsZero())
+			log.Println("CCTime: seq ", c.previousLedger.Seq+1, ": ",
 				time.Unix(int64(tim), 0), " has ", cnt, ", ", threshVote, " required")
 
 			if cnt >= threshVote {
@@ -1039,7 +1040,7 @@ func (c *Consensus) asCloseTime(raw time.Time) time.Time {
 	if useRoundedCloseTime {
 		return roundCloseTime(raw, c.closeResolution)
 	}
-	return EffCloseTime(raw, c.closeResolution, c.previousLedger.CloseTime())
+	return EffCloseTime(raw, c.closeResolution, c.previousLedger.CloseTime)
 }
 
 /*

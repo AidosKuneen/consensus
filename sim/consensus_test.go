@@ -71,11 +71,11 @@ func TestStandalone(t *testing.T) {
 	id[0] = 1
 	p.submit(&tx{id: id})
 	s.scheduler.step()
-	lcl := p.lastClosedLedger.(*ledger)
-	expect(t, p.PrevLedgerID() == lcl.id)
-	expect(t, lcl.Seq() == 1)
-	expect(t, len(lcl.txs) == 1)
-	_, ok := lcl.txs[id]
+	lcl := p.lastClosedLedger
+	expect(t, p.PrevLedgerID() == lcl.ID())
+	expect(t, lcl.Seq == 1)
+	expect(t, len(lcl.Txs) == 1)
+	_, ok := lcl.Txs[id]
 	expect(t, ok)
 	expect(t, p.prevProposers == 0)
 }
@@ -97,9 +97,9 @@ func TestPeersAgree(t *testing.T) {
 	// All peers are in sync
 	if expect(t, sim.synchronized(&sim.allPeers)) {
 		for _, peer := range peers.peers {
-			lcl := peer.lastClosedLedger.(*ledger)
+			lcl := peer.lastClosedLedger
 			expect(t, lcl.ID() == peer.PrevLedgerID())
-			expect(t, lcl.Seq() == 1)
+			expect(t, lcl.Seq == 1)
 			// All peers proposed
 			t.Log(peer.prevProposers)
 			expect(t, peer.prevProposers == len(peers.peers)-1)
@@ -107,7 +107,7 @@ func TestPeersAgree(t *testing.T) {
 			for i := 0; i < len(peers.peers); i++ {
 				var id consensus.TxID
 				id[0] = byte(i)
-				_, ok := lcl.txs[id]
+				_, ok := lcl.Txs[id]
 				expect(t, ok)
 			}
 		}
@@ -149,17 +149,17 @@ func TestSlowPeers1(t *testing.T) {
 		// All peers are in sync even with a slower peer 0
 		if expect(t, sim.synchronized(&sim.allPeers)) {
 			for _, peer := range network.peers {
-				lcl := peer.lastClosedLedger.(*ledger)
-				expect(t, lcl.id == peer.PrevLedgerID())
-				expect(t, lcl.seq == 1)
+				lcl := peer.lastClosedLedger
+				expect(t, lcl.ID() == peer.PrevLedgerID())
+				expect(t, lcl.Seq == 1)
 				t.Log(peer.id, peer.prevProposers)
 				expect(t, peer.prevProposers == len(network.peers)-1)
 				var id consensus.TxID
-				_, ok := lcl.txs[id]
+				_, ok := lcl.Txs[id]
 				expect(t, !ok)
 				for i := 2; i < len(network.peers); i++ {
 					id[0] = byte(i)
-					_, ok := lcl.txs[id]
+					_, ok := lcl.Txs[id]
 					expect(t, ok)
 				}
 				// Tx 0 didn't make it
@@ -209,19 +209,19 @@ func TestSlowPeers2(t *testing.T) {
 		// All peers are in sync even with a slower peer 0
 		if expect(t, sim.synchronized(&sim.allPeers)) {
 			for _, peer := range network.peers {
-				lcl := peer.lastClosedLedger.(*ledger)
-				expect(t, lcl.id == peer.PrevLedgerID())
-				expect(t, lcl.seq == 1)
+				lcl := peer.lastClosedLedger
+				expect(t, lcl.ID() == peer.PrevLedgerID())
+				expect(t, lcl.Seq == 1)
 				var id consensus.TxID
-				_, ok := lcl.txs[id]
+				_, ok := lcl.Txs[id]
 				expect(t, !ok)
 				id[0] = 1
-				_, ok = lcl.txs[id]
+				_, ok = lcl.Txs[id]
 				expect(t, !ok)
 
 				for i := len(slow.peers); i < len(network.peers); i++ {
 					id[0] = byte(i)
-					_, ok = lcl.txs[id]
+					_, ok = lcl.Txs[id]
 					expect(t, ok)
 				}
 				id[0] = 0
@@ -304,7 +304,7 @@ func TestCloseTimeDisagree(t *testing.T) {
 	// Run consensus without skew until we have a short close time
 	// resolution
 	p := grA.peers[0]
-	for p.lastClosedLedger.CloseTimeResolution() >= proposeFreshness {
+	for p.lastClosedLedger.CloseTimeResolution >= proposeFreshness {
 		sim.run(1)
 	}
 	// Introduce a shift on the time of 2/3 of peers
@@ -319,7 +319,8 @@ func TestCloseTimeDisagree(t *testing.T) {
 	// All nodes agreed to disagree on the close time
 	if expect(t, sim.synchronized(&sim.allPeers)) {
 		for _, peer := range network.peers {
-			expect(t, !peer.lastClosedLedger.CloseAgree())
+			t.Log(peer.lastClosedLedger.CloseTime)
+			expect(t, !peer.lastClosedLedger.CloseTimeAgree)
 		}
 	}
 }
@@ -427,8 +428,8 @@ func TestWrongLCL1(t *testing.T) {
 						jump :=
 							peerJumps.closeJumps[0]
 						// Jump is to a different chain
-						expect(t, jump.from.seq <= jump.to.seq)
-						expect(t, !jump.to.isAncestor(jump.from))
+						expect(t, jump.from.Seq <= jump.to.Seq)
+						expect(t, !jump.to.IsAncestor(jump.from))
 					}
 				}
 				// fully validated jump forward in same chain
@@ -440,8 +441,8 @@ func TestWrongLCL1(t *testing.T) {
 						jump :=
 							peerJumps.fullyValidatedJumps[0]
 						// Jump is to a different chain with same seq
-						expect(t, jump.from.seq < jump.to.seq)
-						expect(t, jump.to.isAncestor(jump.from))
+						expect(t, jump.from.Seq < jump.to.Seq)
+						expect(t, jump.to.IsAncestor(jump.from))
 					}
 				}
 			}
@@ -543,7 +544,8 @@ func TestConsensusCloseTimeRounding(t *testing.T) {
 
 		// Check we are before the 30s to 20s transition
 		resolution :=
-			network.peers[0].lastClosedLedger.CloseTimeResolution()
+			network.peers[0].lastClosedLedger.CloseTimeResolution
+		t.Log(resolution)
 		expect(t, resolution == 30*time.Second)
 
 		for when.Second()%30 != 15 || when.Second()%20 != 15 {
@@ -564,8 +566,8 @@ func TestConsensusCloseTimeRounding(t *testing.T) {
 			// the close time to round up
 			for _, peer := range network.peers {
 				expect(t,
-					peer.lastClosedLedger.CloseTime().After(peer.now()))
-				expect(t, peer.lastClosedLedger.CloseAgree())
+					peer.lastClosedLedger.CloseTime.After(peer.now()))
+				expect(t, peer.lastClosedLedger.CloseTimeAgree)
 			}
 		}
 
@@ -617,23 +619,23 @@ func TestConsensusCloseTimeRounding(t *testing.T) {
 
 			// Agree on parent close and close resolution
 			expect(t,
-				slowLCL.ParentCloseTime() == fastLCL.ParentCloseTime())
+				slowLCL.ParentCloseTime == fastLCL.ParentCloseTime)
 			expect(t,
-				slowLCL.CloseTimeResolution() ==
-					fastLCL.CloseTimeResolution())
+				slowLCL.CloseTimeResolution ==
+					fastLCL.CloseTimeResolution)
 
 			// Close times disagree ...
-			expect(t, slowLCL.CloseTime() != fastLCL.CloseTime())
+			expect(t, slowLCL.CloseTime != fastLCL.CloseTime)
 			// Effective close times agree! The slow peer already rounded!
 			expect(t,
 				consensus.EffCloseTime(
-					slowLCL.CloseTime(),
-					slowLCL.CloseTimeResolution(),
-					slowLCL.ParentCloseTime()) ==
+					slowLCL.CloseTime,
+					slowLCL.CloseTimeResolution,
+					slowLCL.ParentCloseTime) ==
 					consensus.EffCloseTime(
-						fastLCL.CloseTime(),
-						fastLCL.CloseTimeResolution(),
-						fastLCL.ParentCloseTime()))
+						fastLCL.CloseTime,
+						fastLCL.CloseTimeResolution,
+						fastLCL.ParentCloseTime))
 		}
 	}
 	consensus.SetUseRoundedCloseTime(true)
@@ -737,22 +739,22 @@ func (d *disruptor) on(who consensus.NodeID, when time.Time, ee interface{}) {
 	log.Println(reflect.TypeOf(ee))
 	switch e := ee.(type) {
 	case fullyValidateLedger:
-		if who == d.groupCfast.peers[0].id && e.ledger.Seq() == 2 {
+		if who == d.groupCfast.peers[0].id && e.ledger.Seq == 2 {
 			d.network.disconnect(d.gropuCsplit)
 			d.network.disconnect(d.groupCfast)
 		}
 	case *fullyValidateLedger:
-		if who == d.groupCfast.peers[0].id && e.ledger.Seq() == 2 {
+		if who == d.groupCfast.peers[0].id && e.ledger.Seq == 2 {
 			d.network.disconnect(d.gropuCsplit)
 			d.network.disconnect(d.groupCfast)
 		}
 	case acceptLedger:
-		if !d.reconnected && e.ledger.Seq() == 3 {
+		if !d.reconnected && e.ledger.Seq == 3 {
 			d.reconnected = true
 			d.network.connect(d.gropuCsplit, d.delay)
 		}
 	case *acceptLedger:
-		if !d.reconnected && e.ledger.Seq() == 3 {
+		if !d.reconnected && e.ledger.Seq == 3 {
 			d.reconnected = true
 			d.network.connect(d.gropuCsplit, d.delay)
 		}
@@ -829,7 +831,7 @@ func TestPreferredByBranch(t *testing.T) {
 	var id consensus.TxID
 	id[0] = 42
 	for _, peer := range groupABD.peers {
-		peer.txInjections[peer.lastClosedLedger.Seq()] = &tx{
+		peer.txInjections[peer.lastClosedLedger.Seq] = &tx{
 			id: id,
 		}
 	}

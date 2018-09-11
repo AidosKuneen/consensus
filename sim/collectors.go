@@ -83,8 +83,8 @@ func (s *simDurationCollector) on(NodeID, when time.Time, e interface{}) {
 type jump struct {
 	id   consensus.NodeID
 	when time.Time
-	from *ledger
-	to   *ledger
+	from *consensus.Ledger
+	to   *consensus.Ledger
 }
 
 type jumpCollector struct {
@@ -95,39 +95,39 @@ type jumpCollector struct {
 func (c *jumpCollector) on(who consensus.NodeID, when time.Time, ee interface{}) {
 	switch v := ee.(type) {
 	case acceptLedger:
-		if v.prior.ID() != v.ledger.(*ledger).parentID {
+		if v.prior.ID() != v.ledger.ParentID {
 			c.closeJumps = append(c.closeJumps, &jump{
 				id:   who,
 				when: when,
-				from: v.prior.(*ledger),
-				to:   v.ledger.(*ledger),
+				from: v.prior,
+				to:   v.ledger,
 			})
 		}
 	case *acceptLedger:
-		if v.prior.ID() != v.ledger.(*ledger).parentID {
+		if v.prior.ID() != v.ledger.ParentID {
 			c.closeJumps = append(c.closeJumps, &jump{
 				id:   who,
 				when: when,
-				from: v.prior.(*ledger),
-				to:   v.ledger.(*ledger),
+				from: v.prior,
+				to:   v.ledger,
 			})
 		}
 	case fullyValidateLedger:
-		if v.prior.ID() != v.ledger.(*ledger).parentID {
+		if v.prior.ID() != v.ledger.ParentID {
 			c.fullyValidatedJumps = append(c.fullyValidatedJumps, &jump{
 				id:   who,
 				when: when,
-				from: v.prior.(*ledger),
-				to:   v.ledger.(*ledger),
+				from: v.prior,
+				to:   v.ledger,
 			})
 		}
 	case *fullyValidateLedger:
-		if v.prior.ID() != v.ledger.(*ledger).parentID {
+		if v.prior.ID() != v.ledger.ParentID {
 			c.fullyValidatedJumps = append(c.fullyValidatedJumps, &jump{
 				id:   who,
 				when: when,
-				from: v.prior.(*ledger),
-				to:   v.ledger.(*ledger),
+				from: v.prior,
+				to:   v.ledger,
 			})
 		}
 	}

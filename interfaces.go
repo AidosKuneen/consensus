@@ -63,23 +63,11 @@ type Seq uint64
 type seqLedgerID [8 + 32]byte
 
 //GenesisID is the ID of genesis ledger.
-var GenesisID [32]byte
+var GenesisID LedgerID
 
 // TxT is a single transaction
 type TxT interface {
 	ID() TxID
-}
-
-// Ledger which is Agreed upon state that consensus transactions will modify
-type Ledger interface {
-	// Unique identifier of ledgerr
-	ID() LedgerID
-	Seq() Seq
-	CloseTimeResolution() time.Duration
-	CloseAgree() bool
-	CloseTime() time.Time
-	ParentCloseTime() time.Time
-	IndexOf(Seq) LedgerID
 }
 
 //PeerPosition wraps a peer's ConsensusProposal
@@ -94,7 +82,7 @@ type ValidationAdaptor interface {
 	//-----------------------------------------------------------------------
 	//
 	// Attempt to acquire a specific ledger.
-	AcquireLedger(LedgerID) (Ledger, error)
+	AcquireLedger(LedgerID) (*Ledger, error)
 
 	// Handle a newly stale validation, this should do minimal work since
 	// it is called by Validations while it may be iterating Validations
@@ -115,7 +103,7 @@ type Adaptor interface {
 	//-----------------------------------------------------------------------
 	//
 	// Attempt to acquire a specific ledger.
-	AcquireLedger(LedgerID) (Ledger, error)
+	AcquireLedger(LedgerID) (*Ledger, error)
 
 	// Acquire the transaction set associated with a proposed position.
 	AcquireTxSet(TxSetID) (TxSet, error)
@@ -129,24 +117,24 @@ type Adaptor interface {
 	// Number of proposers that have validated a ledger descended from the
 	// given ledger; if prevLedger.id() != prevLedgerID, use prevLedgerID
 	// for the determination
-	ProposersFinished(Ledger, LedgerID) uint
+	ProposersFinished(*Ledger, LedgerID) uint
 
 	// Return the ID of the last closed (and validated) ledger that the
 	// application thinks consensus should use as the prior ledger.
-	GetPrevLedger(LedgerID, Ledger, Mode) LedgerID
+	GetPrevLedger(LedgerID, *Ledger, Mode) LedgerID
 
 	// Called whenever consensus operating mode changes
 	OnModeChange(Mode, Mode)
 
 	// Called when ledger closes
-	OnClose(Ledger, time.Time, Mode) *Result
+	OnClose(*Ledger, time.Time, Mode) *Result
 
 	// Called when ledger is accepted by consensus
-	OnAccept(*Result, Ledger, time.Duration, *CloseTimes, Mode)
+	OnAccept(*Result, *Ledger, time.Duration, *CloseTimes, Mode)
 
 	// Called when ledger was forcibly accepted by consensus via the simulate
 	// function.
-	OnForceAccept(*Result, Ledger, time.Duration, *CloseTimes, Mode)
+	OnForceAccept(*Result, *Ledger, time.Duration, *CloseTimes, Mode)
 
 	// Propose the position to peers.
 	Propose(*Proposal)

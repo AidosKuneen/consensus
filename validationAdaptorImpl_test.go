@@ -53,7 +53,7 @@ type adaptorT struct {
 //-----------------------------------------------------------------------
 //
 // Attempt to acquire a specific ledger.
-func (a *adaptorT) AcquireLedger(id LedgerID) (Ledger, error) {
+func (a *adaptorT) AcquireLedger(id LedgerID) (*Ledger, error) {
 	l, ok := ledgers[id]
 	if !ok {
 		return nil, errors.New("not found")
