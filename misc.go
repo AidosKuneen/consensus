@@ -59,17 +59,17 @@ func newAgedMap(c clock) *agedMap {
 }
 
 type nodeVal struct {
-	m       map[NodeID]Validation
+	m       map[NodeID]*Validation
 	touched time.Time
 }
 
-func (a *agedMap) add(lid LedgerID, nid NodeID, v Validation) {
+func (a *agedMap) add(lid LedgerID, nid NodeID, v *Validation) {
 	if m, ok := a.ledgers[lid]; ok {
 		m.m[nid] = v
 		return
 	}
 	a.ledgers[lid] = &nodeVal{
-		m:       make(map[NodeID]Validation),
+		m:       make(map[NodeID]*Validation),
 		touched: a.clock.Now(),
 	}
 	a.ledgers[lid].m[nid] = v
@@ -87,7 +87,7 @@ func (a *agedMap) touch(nv *nodeVal) {
 	nv.touched = a.clock.Now()
 }
 
-func (a *agedMap) loop(id LedgerID, pre func(int), f func(NodeID, Validation)) {
+func (a *agedMap) loop(id LedgerID, pre func(int), f func(NodeID, *Validation)) {
 	nv, ok := a.ledgers[id]
 	if !ok {
 		return

@@ -57,9 +57,9 @@ type processingDelays struct {
 
 func (d *processingDelays) onReceive(m interface{}) time.Duration {
 	switch m.(type) {
-	case *validationT:
+	case *consensus.Validation:
 		return d.recvValidation
-	case validationT:
+	case consensus.Validation:
 		return d.recvValidation
 	default:
 		return 0
@@ -77,12 +77,12 @@ func (a *valAdaptor) AcquireLedger(id consensus.LedgerID) (*consensus.Ledger, er
 // Handle a newly stale validation, this should do minimal work since
 // it is called by Validations while it may be iterating Validations
 // under lock
-func (a *valAdaptor) OnStale(consensus.Validation) {
+func (a *valAdaptor) OnStale(*consensus.Validation) {
 
 }
 
 // Flush the remaining validations (typically done on shutdown)
-func (a *valAdaptor) Flush(remaining map[consensus.NodeID]consensus.Validation) {
+func (a *valAdaptor) Flush(remaining map[consensus.NodeID]*consensus.Validation) {
 
 }
 
@@ -100,7 +100,7 @@ type peer struct {
 	id consensus.NodeID
 
 	//! Current signing key
-	key peerKey
+	// key peerKey
 
 	//! The oracle that manages unique ledgers
 	oracle *ledgerOracle
@@ -192,9 +192,9 @@ func newPeer(i consensus.NodeID, s *scheduler, o *ledgerOracle, n *basicNetwork,
 		id:        i,
 		oracle:    o,
 		scheduler: s,
-		key: peerKey{
-			i: 0,
-		},
+		// key: peerKey{
+		// 	i: 0,
+		// },
 		net:                  n,
 		trustGraph:           tg,
 		lastClosedLedger:     consensus.Genesis,
@@ -405,14 +405,14 @@ func (p *peer) OnAccept(result *consensus.Result, prevLedger *consensus.Ledger,
 			p.seqEnforcer.Try(p.scheduler.clock.Now(), newLedger.Seq) {
 			isFull := proposing
 
-			v := validationT{
-				id:       newLedger.ID(),
-				seq:      newLedger.Seq,
-				signTime: p.now(),
-				seenTime: p.now(),
-				key:      p.key,
-				nodeID:   p.id,
-				full:     isFull,
+			v := consensus.Validation{
+				LedgerID: newLedger.ID(),
+				Seq:      newLedger.Seq,
+				SignTime: p.now(),
+				SeenTime: p.now(),
+				// Key:      p.key,
+				NodeID: p.id,
+				Full:   isFull,
 			}
 			// share the new validation; it is trusted by the receiver
 			p.share(v)
@@ -500,17 +500,17 @@ func (p *peer) ShareTxset(ts consensus.TxSet) {
 // Validation members
 
 /** Add a trusted validation and return true if it is worth forwarding */
-func (p *peer) addTrustedValidation(v *validationT) bool {
-	v.SetTrusted()
-	v.seenTime = p.now()
-	res := p.validations.Add(v.nodeID, v)
+func (p *peer) addTrustedValidation(v *consensus.Validation) bool {
+	v.Trusted = true
+	v.SeenTime = p.now()
+	res := p.validations.Add(v.NodeID, v)
 
 	if res == consensus.VstatStale {
 		return false
 	}
 
 	// Acquire will try to get from network if not already local
-	if lgr, err := p.AcquireLedger(v.LedgerID()); err == nil {
+	if lgr, err := p.AcquireLedger(v.LedgerID); err == nil {
 		p.checkFullyValidated(lgr)
 	}
 	return true
@@ -648,11 +648,9 @@ func (p *peer) handle(vv interface{}) bool {
 		_, ok := p.openTxs[v.id]
 		p.openTxs[v.id] = v
 		return !ok
-	case validationT:
-		log.Println("peer", p.id[0], "handling validation", v.id[:2])
-
+	case consensus.Validation:
 		// TODO: This is not relaying untrusted validations
-		if !p.trusts(v.nodeID) {
+		if !p.trusts(v.NodeID) {
 			return false
 		}
 		// Will only relay if current

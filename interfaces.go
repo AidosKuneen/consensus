@@ -57,6 +57,9 @@ type TxSetID [32]byte
 //LedgerID is a id for a ledger.
 type LedgerID [32]byte
 
+//ValidationID is a id for a ledger.
+type ValidationID [32]byte
+
 //Seq is a sequence no.
 type Seq uint64
 
@@ -82,10 +85,10 @@ type ValidationAdaptor interface {
 	// Handle a newly stale validation, this should do minimal work since
 	// it is called by Validations while it may be iterating Validations
 	// under lock
-	OnStale(Validation)
+	OnStale(*Validation)
 
 	// Flush the remaining validations (typically done on shutdown)
-	Flush(remaining map[NodeID]Validation)
+	Flush(remaining map[NodeID]*Validation)
 
 	// Return the current network time (used to determine staleness)
 	Now() time.Time
@@ -142,36 +145,6 @@ type Adaptor interface {
 
 	// Share given transaction set with peers
 	ShareTxset(TxSet)
-}
-
-//Validation is a validation info of ledger.
-type Validation interface {
-	// Ledger ID associated with this validation
-	LedgerID() LedgerID
-
-	// Sequence number of validation's ledger (0 means no sequence number)
-	Seq() Seq
-
-	// When the validation was signed
-	SignTime() time.Time
-
-	// When the validation was first observed by this node
-	SeenTime() time.Time
-
-	// Whether the publishing node was Trusted at the time the validation
-	// arrived
-	Trusted() bool
-
-	// Set the validation as trusted
-	SetTrusted()
-
-	// Set the validation as untrusted
-	SetUntrusted()
-
-	// Whether this is a Full or partial validation
-	Full() bool
-
-	LoadFee() uint32
 }
 
 type clock interface {

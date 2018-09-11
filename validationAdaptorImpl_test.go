@@ -64,12 +64,12 @@ func (a *adaptorT) AcquireLedger(id LedgerID) (*Ledger, error) {
 // Handle a newly stale validation, this should do minimal work since
 // it is called by Validations while it may be iterating Validations
 // under lock
-func (a *adaptorT) OnStale(v Validation) {
+func (a *adaptorT) OnStale(v *Validation) {
 	a.staleData.stale = append(a.staleData.stale, v)
 }
 
 // Flush the remaining validations (typically done on shutdown)
-func (a *adaptorT) Flush(remaining map[NodeID]Validation) {
+func (a *adaptorT) Flush(remaining map[NodeID]*Validation) {
 	a.staleData.flushed = remaining
 }
 
