@@ -130,10 +130,6 @@ type Adaptor interface {
 	// Called when ledger is accepted by consensus
 	OnAccept(*Result, *Ledger, time.Duration, *CloseTimes, Mode)
 
-	// Called when ledger was forcibly accepted by consensus via the simulate
-	// function.
-	OnForceAccept(*Result, *Ledger, time.Duration, *CloseTimes, Mode)
-
 	// Propose the position to peers.
 	Propose(*Proposal)
 

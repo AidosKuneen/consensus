@@ -528,8 +528,6 @@ func (c *Consensus) checkLedger() {
 			c.phase, " status=", c.phase,
 			", ",
 			" mode=", c.mode.mode)
-		log.Println(c.prevLedgerID, " to ", netLgr)
-		log.Println(c.previousLedger)
 		log.Println("State on consensus change ", c)
 		c.handleWrongLedger(netLgr)
 		return
@@ -804,7 +802,6 @@ func (c *Consensus) updateOurPositions() {
 			" thrC:", threshConsensus)
 
 		for tim, cnt := range closeTimeVotes {
-			log.Println(tim, time.Unix(int64(tim), 0).IsZero())
 			log.Println("CCTime: seq ", c.previousLedger.Seq+1, ": ",
 				time.Unix(int64(tim), 0), " has ", cnt, ", ", threshVote, " required")
 
@@ -817,21 +814,15 @@ func (c *Consensus) updateOurPositions() {
 				}
 			}
 		}
-
+		log.Println(
+			" Proposers:", len(c.currPeerPositions),
+			" Mode:", c.mode.mode,
+			" Thresh:", threshConsensus,
+			" Pos:", consensusCloseTime)
 		if !c.haveCloseTimeConsensus {
-			log.Println(
-				"No CT consensus:",
-				" Proposers:", len(c.currPeerPositions),
-				" Mode:", c.mode.mode,
-				" Thresh:", threshConsensus,
-				" Pos:", consensusCloseTime)
+			log.Println("No CT consensus:")
 		} else {
-			log.Println(
-				"CT consensus:",
-				" Proposers:", len(c.currPeerPositions),
-				" Mode:", c.mode.mode,
-				" Thresh:", threshConsensus,
-				" Pos:", consensusCloseTime)
+			log.Println("CT consensus:")
 
 		}
 	}
@@ -892,7 +883,7 @@ func (c *Consensus) haveConsensus() bool {
 		if peerProp.Position == ourPosition {
 			agree++
 		} else {
-			log.Println(nid[0], " has ", peerProp.Position[:2])
+			log.Println(nid[:2], " has ", peerProp.Position[:2])
 			disagree++
 		}
 	}
@@ -921,7 +912,6 @@ func (c *Consensus) haveConsensus() bool {
 	// without us.
 	if c.result.State == StateMovedOn {
 		log.Println("Unable to reach consensus")
-		log.Println(c)
 	}
 
 	return true

@@ -359,11 +359,6 @@ func (p *peer) OnClose(prevLedger *consensus.Ledger, closeTime time.Time,
 		},
 	}
 }
-func (p *peer) OnForceAccept(result *consensus.Result, prevLedger *consensus.Ledger,
-	closeResolution time.Duration, rawCloseTime *consensus.CloseTimes,
-	mode consensus.Mode) {
-	p.OnAccept(result, prevLedger, closeResolution, rawCloseTime, mode)
-}
 
 func (p *peer) OnAccept(result *consensus.Result, prevLedger *consensus.Ledger,
 	closeResolution time.Duration, rawCloseTime *consensus.CloseTimes,
