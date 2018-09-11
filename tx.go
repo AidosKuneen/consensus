@@ -39,35 +39,66 @@
 */
 //==============================================================================
 
-package sim
+package consensus
 
 import (
 	"bytes"
-
-	"github.com/AidosKuneen/consensus"
+	"crypto/sha256"
+	"sort"
 )
 
-// TxT is a single transaction
-type tx struct {
-	id consensus.TxID
+// TxSet is a set of transactions
+type TxSet struct {
+	Txs map[TxID]TxT
 }
 
-func (t *tx) ID() consensus.TxID {
-	return t.id
-}
-func (t *tx) less(t2 *tx) bool {
-	return bytes.Compare(t.id[:], t2.id[:]) < 0
-}
-func (t *tx) equal(t2 *tx) bool {
-	return bytes.Equal(t.id[:], t2.id[:])
+//NewTxSet returns a new TxSet.
+func NewTxSet() *TxSet {
+	return &TxSet{
+		Txs: make(map[TxID]TxT),
+	}
 }
 
-func newTxSetFromTxSetType(set txSetType) *consensus.TxSet {
-	ts := &consensus.TxSet{
-		Txs: make(map[consensus.TxID]consensus.TxT),
+func (t *TxSet) clone() *TxSet {
+	t2 := NewTxSet()
+	for k, v := range t.Txs {
+		t2.Txs[k] = v
 	}
-	for k, v := range set {
-		ts.Txs[k] = v
+	return t2
+}
+
+//ID returns the id of the TxSet t.
+func (t *TxSet) ID() TxSetID {
+	ids := make([]TxID, 0, len(t.Txs))
+	for id := range t.Txs {
+		ids = append(ids, id)
 	}
-	return ts
+	sort.Slice(ids, func(i, j int) bool {
+		return bytes.Compare(ids[i][:], ids[j][:]) < 0
+	})
+	h := sha256.New()
+	for _, id := range ids {
+		h.Write(id[:])
+	}
+	var id TxSetID
+	copy(id[:], h.Sum(nil))
+	return id
+}
+
+// Return set of transactions that are not common to this set or other
+// boolean indicates which set it was in
+// If true I have the tx, otherwiwse o has it.
+func (t *TxSet) compare(o *TxSet) map[TxID]bool {
+	r := make(map[TxID]bool)
+	for _, tt := range t.Txs {
+		if _, ok := o.Txs[tt.ID()]; !ok {
+			r[tt.ID()] = true
+		}
+	}
+	for _, tt := range o.Txs {
+		if _, ok := t.Txs[tt.ID()]; !ok {
+			r[tt.ID()] = false
+		}
+	}
+	return r
 }

@@ -49,7 +49,7 @@ import (
 	"github.com/AidosKuneen/consensus"
 )
 
-type txSetType map[consensus.TxID]*tx
+type txSetType map[consensus.TxID]consensus.TxT
 
 func (ts txSetType) clone() txSetType {
 	txs := make(txSetType)
@@ -113,7 +113,8 @@ func (l *ledger) bytes() []byte {
 	bs := make([]byte, 8+32+8+8+1+32+8)
 	binary.LittleEndian.PutUint64(bs, uint64(l.seq))
 	txs := newTxSetFromTxSetType(l.txs)
-	copy(bs[8:], txs.id[:])
+	id := txs.ID()
+	copy(bs[8:], id[:])
 	binary.LittleEndian.PutUint64(bs[8+32:], uint64(l.closeTimeResolution))
 	binary.LittleEndian.PutUint64(bs[8+32+8:], uint64(l.closeTime.Unix()))
 	if l.closeTimeAgree {

@@ -70,21 +70,6 @@ type TxT interface {
 	ID() TxID
 }
 
-// TxSet is A set of transactions
-type TxSet interface {
-	Exists(TxID) bool
-	// Return value should have semantics like Tx const *
-	Find(TxID) (TxT, error)
-	ID() TxSetID
-	Clone() TxSet
-	// Return set of transactions that are not common to this set or other
-	// boolean indicates which set it was in
-	// If true I have the tx, otherwiwse o has it.
-	Compare(o TxSet) map[TxID]bool
-	Insert(TxT) bool
-	Erase(TxID) bool
-}
-
 // Ledger which is Agreed upon state that consensus transactions will modify
 type Ledger interface {
 	// Unique identifier of ledgerr
@@ -133,7 +118,7 @@ type Adaptor interface {
 	AcquireLedger(LedgerID) (Ledger, error)
 
 	// Acquire the transaction set associated with a proposed position.
-	AcquireTxSet(TxSetID) (TxSet, error)
+	AcquireTxSet(TxSetID) (*TxSet, error)
 
 	// Whether any transactions are in the open ledger
 	HasOpenTransactions() bool
@@ -173,7 +158,7 @@ type Adaptor interface {
 	ShareTx(TxT)
 
 	// Share given transaction set with peers
-	ShareTxset(TxSet)
+	ShareTxset(*TxSet)
 }
 
 //Validation is a validation info of ledger.
