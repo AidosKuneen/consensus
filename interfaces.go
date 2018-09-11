@@ -118,7 +118,7 @@ type Adaptor interface {
 	AcquireLedger(LedgerID) (Ledger, error)
 
 	// Acquire the transaction set associated with a proposed position.
-	AcquireTxSet(TxSetID) (*TxSet, error)
+	AcquireTxSet(TxSetID) (TxSet, error)
 
 	// Whether any transactions are in the open ledger
 	HasOpenTransactions() bool
@@ -158,7 +158,7 @@ type Adaptor interface {
 	ShareTx(TxT)
 
 	// Share given transaction set with peers
-	ShareTxset(*TxSet)
+	ShareTxset(TxSet)
 }
 
 //Validation is a validation info of ledger.

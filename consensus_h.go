@@ -133,7 +133,7 @@ type Consensus struct {
 	previousLedger Ledger
 
 	// Transaction Sets, indexed by hash of transaction tree
-	acquired map[TxSetID]*TxSet
+	acquired map[TxSetID]TxSet
 
 	result        *Result
 	rawCloseTimes *CloseTimes
@@ -169,7 +169,7 @@ func NewConsensus(c clock, adaptor Adaptor) *Consensus {
 		firstRound:          true,
 		closeResolution:     LedgerDefaultTimeResolution,
 		adaptor:             adaptor,
-		acquired:            make(map[TxSetID]*TxSet),
+		acquired:            make(map[TxSetID]TxSet),
 		deadNodes:           make(map[NodeID]struct{}),
 		recentPeerPositions: make(map[NodeID][]PeerPosition),
 		currPeerPositions:   make(map[NodeID]PeerPosition),
@@ -235,7 +235,7 @@ func (c *Consensus) startRoundInternal(
 	c.haveCloseTimeConsensus = false
 	c.openTime.reset(c.c.Now())
 	c.currPeerPositions = make(map[NodeID]PeerPosition)
-	c.acquired = make(map[TxSetID]*TxSet)
+	c.acquired = make(map[TxSetID]TxSet)
 	c.rawCloseTimes.Peers = make(map[unixTime]int)
 	c.rawCloseTimes.Self = time.Time{}
 	c.deadNodes = make(map[NodeID]struct{})
@@ -385,7 +385,7 @@ func (c *Consensus) TimerEntry(now time.Time) {
 //GotTxSet processes a transaction set acquired from the network
 //   @param now The network adjusted time
 //   @param txSet the transaction set
-func (c *Consensus) GotTxSet(now time.Time, ts *TxSet) {
+func (c *Consensus) GotTxSet(now time.Time, ts TxSet) {
 	// Nothing to do if we've finished work on a ledger
 	if c.phase == phaseAccepted {
 		return
@@ -743,25 +743,25 @@ func (c *Consensus) updateOurPositions() {
 	}
 
 	// This will stay unseated unless there are any changes
-	var ourNewSet *TxSet
+	var ourNewSet TxSet
 
 	// Update votes on disputed transactions
 	{
-		var mutableSet *TxSet
+		var mutableSet TxSet
 		for txid, disp := range c.result.Disputes {
 			// Because the threshold for inclusion increases,
 			//  time can change our position on a dispute
 			if disp.updateVote(c.convergePercent, c.mode.mode == ModeProposing) {
 				if mutableSet == nil {
-					mutableSet = c.result.Txns.clone()
+					mutableSet = c.result.Txns.Clone()
 				}
 
 				if disp.OurVote {
 					// now a yes
-					mutableSet.Txs[disp.Tx.ID()] = disp.Tx
+					mutableSet[disp.Tx.ID()] = disp.Tx
 				} else {
 					// now a no
-					delete(mutableSet.Txs, txid)
+					delete(mutableSet, txid)
 				}
 			}
 		}
@@ -946,7 +946,7 @@ func (c *Consensus) leaveConsensus() {
 }
 
 // Create disputes between our position and the provided one.
-func (c *Consensus) createDisputes(o *TxSet) {
+func (c *Consensus) createDisputes(o TxSet) {
 	// Cannot create disputes without our stance
 	if c.result == nil {
 		panic("result is nil")
@@ -971,17 +971,17 @@ func (c *Consensus) createDisputes(o *TxSet) {
 	for se, id := range differences {
 		dc++
 		// create disputed transactions (from the ledger that has them)
-		_, ok := o.Txs[se]
-		_, ok2 := c.result.Txns.Txs[se]
+		_, ok := o[se]
+		_, ok2 := c.result.Txns[se]
 		if !((id && ok2 && !ok) || (!id && !ok2 && ok)) {
 			panic("invalid ledger")
 		}
 
 		var tx TxT
 		if id {
-			tx, ok = c.result.Txns.Txs[se]
+			tx, ok = c.result.Txns[se]
 		} else {
-			tx, ok = o.Txs[se]
+			tx, ok = o[se]
 		}
 		if !ok {
 			panic("not found")
@@ -998,7 +998,7 @@ func (c *Consensus) createDisputes(o *TxSet) {
 		if num < uint(len(c.currPeerPositions)) {
 			num = uint(len(c.currPeerPositions))
 		}
-		_, ok = c.result.Txns.Txs[txID]
+		_, ok = c.result.Txns[txID]
 		dtx := newDisputedTx(tx, ok, num)
 
 		// Update all of the available peer's votes on the disputed transaction
@@ -1006,7 +1006,7 @@ func (c *Consensus) createDisputes(o *TxSet) {
 			peerProp := pos.Proposal()
 			cit, ok := c.acquired[peerProp.Position]
 			if ok {
-				_, ok2 = cit.Txs[txID]
+				_, ok2 = cit[txID]
 				dtx.setVote(nid, ok2)
 			}
 		}
@@ -1018,7 +1018,7 @@ func (c *Consensus) createDisputes(o *TxSet) {
 
 // Update our disputes given that this node has adopted a new position.
 // Will call createDisputes as needed.
-func (c *Consensus) updateDisputes(node NodeID, other *TxSet) {
+func (c *Consensus) updateDisputes(node NodeID, other TxSet) {
 	// Cannot updateDisputes without our stance
 	if c.result == nil {
 		panic("result is nil")
@@ -1031,7 +1031,7 @@ func (c *Consensus) updateDisputes(node NodeID, other *TxSet) {
 	}
 
 	for _, it := range c.result.Disputes {
-		_, ok := other.Txs[it.Tx.ID()]
+		_, ok := other[it.Tx.ID()]
 		it.setVote(node, ok)
 	}
 }

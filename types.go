@@ -210,7 +210,7 @@ const (
 type Result struct {
 	//! The set of transactions consensus agrees go in the ledger
 	// You must fill it when OnClose is called.
-	Txns *TxSet
+	Txns TxSet
 
 	//! Our proposed Position on transactions/close time
 	// You must fill it when OnClose is called.
@@ -233,7 +233,7 @@ type Result struct {
 	Proposers uint
 }
 
-func newConsensusResult(txns *TxSet, pos *Proposal) *Result {
+func newConsensusResult(txns TxSet, pos *Proposal) *Result {
 	if txns.ID() != pos.Position {
 		panic("invalid txSet and proposal")
 	}

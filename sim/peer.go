@@ -123,7 +123,7 @@ type peer struct {
 	trustGraph *trustGraph
 
 	//! openTxs that haven't been closed in a ledger yet
-	openTxs txSetType
+	openTxs consensus.TxSet
 
 	//! The last ledger closed by this node
 	lastClosedLedger consensus.Ledger
@@ -146,7 +146,7 @@ type peer struct {
 	//! as the prior ledger
 	peerPositions map[consensus.LedgerID][]*consensus.Proposal
 	//! TxSet associated with a TxSet::ID
-	txSets map[consensus.TxSetID]*consensus.TxSet
+	txSets map[consensus.TxSetID]consensus.TxSet
 
 	// Ledgers/TxSets we are acquiring and when that request times out
 	acquiringLedgers map[consensus.LedgerID]time.Time
@@ -213,8 +213,8 @@ func newPeer(i consensus.NodeID, s *scheduler, o *ledgerOracle, n *basicNetwork,
 		acquiringLedgers:     make(map[consensus.LedgerID]time.Time),
 		acquiringTxSets:      make(map[consensus.TxSetID]time.Time),
 		peerPositions:        make(map[consensus.LedgerID][]*consensus.Proposal),
-		txSets:               make(map[consensus.TxSetID]*consensus.TxSet),
-		openTxs:              make(txSetType),
+		txSets:               make(map[consensus.TxSetID]consensus.TxSet),
+		openTxs:              make(consensus.TxSet),
 		router: &routerT{
 			nextSeq:         1,
 			lastObservedSeq: make(map[consensus.NodeID]map[uint]struct{}),
@@ -294,7 +294,7 @@ func (p *peer) AcquireLedger(ledgerID consensus.LedgerID) (consensus.Ledger, err
 }
 
 // Attempt to acquire the TxSet associated with the given ID
-func (p *peer) AcquireTxSet(setID consensus.TxSetID) (*consensus.TxSet, error) {
+func (p *peer) AcquireTxSet(setID consensus.TxSetID) (consensus.TxSet, error) {
 	it, ok := p.txSets[setID]
 	if ok {
 		return it, nil
@@ -350,9 +350,9 @@ func (p *peer) OnClose(prevLedger consensus.Ledger, closeTime time.Time,
 	mode consensus.Mode) *consensus.Result {
 	p.issue(&closeLedger{
 		prevLedger: prevLedger.(*ledger).clone(),
-		txSetType:  p.openTxs.clone(),
+		txSetType:  p.openTxs.Clone(),
 	})
-	txns := newTxSetFromTxSetType(p.openTxs)
+	txns := p.openTxs.Clone()
 	id := txns.ID()
 	log.Println("closed #txs", len(p.openTxs), "pid", p.id[0], "txnsid", id[:2], "time", closeTime)
 	return &consensus.Result{
@@ -384,7 +384,7 @@ func (p *peer) OnAccept(result *consensus.Result, prevLedger consensus.Ledger,
 		acceptedTxs := p.injectTxs(prevLedger.(*ledger), result.Txns)
 		newLedger := p.oracle.accept(
 			prevLedger.(*ledger),
-			acceptedTxs.Txs,
+			acceptedTxs,
 			closeResolution,
 			result.Position.CloseTime)
 		p.ledgers[newLedger.id] = newLedger
@@ -401,7 +401,7 @@ func (p *peer) OnAccept(result *consensus.Result, prevLedger consensus.Ledger,
 		log.Println("newledger pid", p.id[0], "ledgerid", newLedger.id[:2], "lastclosed id", lid[:2], "seq", newLedger.seq)
 
 		for id := range p.openTxs {
-			if _, ok := acceptedTxs.Txs[id]; ok {
+			if _, ok := acceptedTxs[id]; ok {
 				delete(p.openTxs, id)
 			}
 		}
@@ -498,10 +498,10 @@ func (p *peer) SharePosition(pos consensus.PeerPosition) {
 func (p *peer) ShareTx(tx consensus.TxT) {
 	p.share(tx)
 }
-func (p *peer) ShareTxset(ts *consensus.TxSet) {
+func (p *peer) ShareTxset(ts consensus.TxSet) {
 	ts2 := consensus.NewTxSet()
-	for k, v := range ts.Txs {
-		ts2.Txs[k] = v
+	for k, v := range ts {
+		ts2[k] = v
 	}
 	p.share(ts2)
 }
@@ -638,14 +638,12 @@ func (p *peer) handle(vv interface{}) bool {
 		return p.consensus.PeerProposal(p.now(), &position{
 			proposal: v,
 		})
-	case *consensus.TxSet:
+	case consensus.TxSet:
 		id := v.ID()
 		log.Println("peer", p.id[0], "handling a txset", id[:2])
 		_, ok := p.txSets[id]
 		if !ok {
-			s := &consensus.TxSet{
-				Txs: v.Txs,
-			}
+			s := consensus.TxSet(v)
 			p.txSets[id] = s
 			p.consensus.GotTxSet(p.now(), s)
 		}
@@ -747,16 +745,13 @@ func (p *peer) PrevLedgerID() consensus.LedgerID {
   @return Consensus TxSet with inject transactions added if prevLedger.seq
           matches a previously registered Tx.
 */
-func (p *peer) injectTxs(prevLedger *ledger, src *consensus.TxSet) *consensus.TxSet {
+func (p *peer) injectTxs(prevLedger *ledger, src consensus.TxSet) consensus.TxSet {
 	it, ok := p.txInjections[prevLedger.seq]
 
 	if !ok {
 		return src
 	}
-	res := txSetType(src.Txs)
+	res := src.Clone()
 	res[it.ID()] = it
-	s := &consensus.TxSet{
-		Txs: res,
-	}
-	return s
+	return res
 }

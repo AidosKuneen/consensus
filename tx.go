@@ -48,29 +48,26 @@ import (
 )
 
 // TxSet is a set of transactions
-type TxSet struct {
-	Txs map[TxID]TxT
-}
+type TxSet map[TxID]TxT
 
 //NewTxSet returns a new TxSet.
-func NewTxSet() *TxSet {
-	return &TxSet{
-		Txs: make(map[TxID]TxT),
-	}
+func NewTxSet() TxSet {
+	return make(TxSet)
 }
 
-func (t *TxSet) clone() *TxSet {
+//Clone clones the TxSet
+func (t TxSet) Clone() TxSet {
 	t2 := NewTxSet()
-	for k, v := range t.Txs {
-		t2.Txs[k] = v
+	for k, v := range t {
+		t2[k] = v
 	}
 	return t2
 }
 
 //ID returns the id of the TxSet t.
-func (t *TxSet) ID() TxSetID {
-	ids := make([]TxID, 0, len(t.Txs))
-	for id := range t.Txs {
+func (t TxSet) ID() TxSetID {
+	ids := make([]TxID, 0, len(t))
+	for id := range t {
 		ids = append(ids, id)
 	}
 	sort.Slice(ids, func(i, j int) bool {
@@ -88,15 +85,15 @@ func (t *TxSet) ID() TxSetID {
 // Return set of transactions that are not common to this set or other
 // boolean indicates which set it was in
 // If true I have the tx, otherwiwse o has it.
-func (t *TxSet) compare(o *TxSet) map[TxID]bool {
+func (t TxSet) compare(o TxSet) map[TxID]bool {
 	r := make(map[TxID]bool)
-	for _, tt := range t.Txs {
-		if _, ok := o.Txs[tt.ID()]; !ok {
+	for _, tt := range t {
+		if _, ok := o[tt.ID()]; !ok {
 			r[tt.ID()] = true
 		}
 	}
-	for _, tt := range o.Txs {
-		if _, ok := t.Txs[tt.ID()]; !ok {
+	for _, tt := range o {
+		if _, ok := t[tt.ID()]; !ok {
 			r[tt.ID()] = false
 		}
 	}

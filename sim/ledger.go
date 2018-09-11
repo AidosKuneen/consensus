@@ -49,16 +49,6 @@ import (
 	"github.com/AidosKuneen/consensus"
 )
 
-type txSetType map[consensus.TxID]consensus.TxT
-
-func (ts txSetType) clone() txSetType {
-	txs := make(txSetType)
-	for i, a := range ts {
-		txs[i] = a
-	}
-	return txs
-}
-
 /** A ledger is a set of observed transactions and a sequence number
   identifying the ledger.
 
@@ -85,7 +75,7 @@ type ledger struct {
 	parentID            consensus.LedgerID
 	seq                 consensus.Seq
 	ancestors           []consensus.LedgerID
-	txs                 txSetType
+	txs                 consensus.TxSet
 	closeTimeResolution time.Duration
 	closeTime           time.Time
 	closeTimeAgree      bool
@@ -95,7 +85,7 @@ type ledger struct {
 var genesis = &ledger{
 	id:                  consensus.GenesisID,
 	closeTimeResolution: consensus.LedgerDefaultTimeResolution,
-	txs:                 make(txSetType),
+	txs:                 make(consensus.TxSet),
 	closeTimeAgree:      true,
 }
 
@@ -105,15 +95,14 @@ func (l *ledger) clone() *ledger {
 	for i, a := range l.ancestors {
 		l2.ancestors[i] = a
 	}
-	l2.txs = l.txs.clone()
+	l2.txs = l.txs.Clone()
 	return &l2
 }
 
 func (l *ledger) bytes() []byte {
 	bs := make([]byte, 8+32+8+8+1+32+8)
 	binary.LittleEndian.PutUint64(bs, uint64(l.seq))
-	txs := newTxSetFromTxSetType(l.txs)
-	id := txs.ID()
+	id := l.txs.ID()
 	copy(bs[8:], id[:])
 	binary.LittleEndian.PutUint64(bs[8+32:], uint64(l.closeTimeResolution))
 	binary.LittleEndian.PutUint64(bs[8+32+8:], uint64(l.closeTime.Unix()))
@@ -200,10 +189,10 @@ func (l *ledgerOracle) nextID() consensus.LedgerID {
 	return id
 }
 
-func (l *ledgerOracle) accept(parent *ledger, txs txSetType,
+func (l *ledgerOracle) accept(parent *ledger, txs consensus.TxSet,
 	closeTimeResolution time.Duration, consensusCloseTime time.Time) *ledger {
 	next := ledger{
-		txs: make(txSetType),
+		txs: make(consensus.TxSet),
 	}
 	for tid, t := range txs {
 		next.txs[tid] = t
@@ -236,7 +225,7 @@ func (l *ledgerOracle) accept(parent *ledger, txs txSetType,
 func (l *ledgerOracle) accept2(curr *ledger, t *tx) *ledger {
 	return l.accept(
 		curr,
-		txSetType{
+		consensus.TxSet{
 			t.id: t,
 		},
 		curr.closeTimeResolution,

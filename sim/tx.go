@@ -61,13 +61,3 @@ func (t *tx) less(t2 *tx) bool {
 func (t *tx) equal(t2 *tx) bool {
 	return bytes.Equal(t.id[:], t2.id[:])
 }
-
-func newTxSetFromTxSetType(set txSetType) *consensus.TxSet {
-	ts := &consensus.TxSet{
-		Txs: make(map[consensus.TxID]consensus.TxT),
-	}
-	for k, v := range set {
-		ts.Txs[k] = v
-	}
-	return ts
-}

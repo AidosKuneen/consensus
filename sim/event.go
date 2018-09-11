@@ -116,7 +116,7 @@ type closeLedger struct {
 	prevLedger consensus.Ledger
 
 	// Initial txs for including in ledger
-	txSetType txSetType
+	txSetType consensus.TxSet
 }
 
 //! Peer accepted consensus results
