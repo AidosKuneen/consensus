@@ -63,8 +63,6 @@ type ValidationID [32]byte
 //Seq is a sequence no.
 type Seq uint64
 
-type seqLedgerID [8 + 32]byte
-
 //GenesisID is the ID of genesis ledger.
 var GenesisID LedgerID
 
@@ -76,9 +74,8 @@ type TxT interface {
 //The ValidationAdaptor template implements a set of helper functions that
 //plug the consensus algorithm into a specific application.  It also identifies
 //the types that play important roles in Consensus (transactions, ledgers, ...).
+//Normally you should use Peer and PeerInterface instead.
 type ValidationAdaptor interface {
-	//-----------------------------------------------------------------------
-	//
 	// Attempt to acquire a specific ledger.
 	AcquireLedger(LedgerID) (*Ledger, error)
 
@@ -97,6 +94,7 @@ type ValidationAdaptor interface {
 //The Adaptor template implements a set of helper functions that
 //plug the consensus algorithm into a specific application.  It also identifies
 //the types that play important roles in Consensus (transactions, ledgers, ...).
+//Normally you should use Peer and PeerInterface instead.
 type Adaptor interface {
 	//-----------------------------------------------------------------------
 	//

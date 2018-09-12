@@ -100,6 +100,8 @@ var (
 	//LedgerGranularity determins how often we check state or change positions
 	LedgerGranularity = 1 * time.Second
 
+	ledgerPrevInterval = 10 * time.Minute
+
 	/** The minimum amount of time to consider the previous round
 	  to have taken.
 

@@ -56,7 +56,7 @@ type Validation struct {
 	NodeID   NodeID
 	Trusted  bool
 	Full     bool
-	LoadFee  uint32
+	Fee      uint32
 }
 
 //ID returns the ID of validation v.
@@ -71,7 +71,7 @@ func (v *Validation) bytes() []byte {
 	binary.LittleEndian.PutUint64(bs[32+8:], uint64(v.SignTime.Unix()))
 	binary.LittleEndian.PutUint64(bs[32+8+8:], uint64(v.SeenTime.Unix()))
 	copy(bs[32+8+8:], v.NodeID[:])
-	binary.LittleEndian.PutUint32(bs[32+8+8+32:], v.LoadFee)
+	binary.LittleEndian.PutUint32(bs[32+8+8+32:], v.Fee)
 	if v.Full {
 		bs[32+8+8+32+4] = 1
 	}

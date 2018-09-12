@@ -91,7 +91,7 @@ func (n *nodeT) validate(id LedgerID, seq Seq, signOffset, seenOffset time.Durat
 		// key:      n.currKey(),
 		NodeID:  n.nodeID,
 		Full:    full,
-		LoadFee: n.loadFee,
+		Fee:     n.loadFee,
 		Trusted: n.trusted,
 	}
 }

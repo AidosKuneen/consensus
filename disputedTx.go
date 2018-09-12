@@ -79,20 +79,20 @@ func (dtx *DisputedTx) setVote(peer NodeID, votesYes bool) {
 		// new vote
 		dtx.Votes[peer] = votesYes
 		if votesYes {
-			log.Println("Peer ", peer[0], " votes YES on ", did[:2])
+			log.Println("Peer ", peer[:2], " votes YES on ", did[:2])
 			dtx.Yays++
 		} else {
-			log.Println("Peer ", peer[0], " votes NO on ", did[:2])
+			log.Println("Peer ", peer[:2], " votes NO on ", did[:2])
 			dtx.Nays++
 		}
 	case votesYes && !res:
 		// changes vote to yes
-		log.Println("Peer ", peer[0], "now votes YES on ", did[:2])
+		log.Println("Peer ", peer[:2], "now votes YES on ", did[:2])
 		dtx.Nays--
 		dtx.Yays++
 		// changes vote to no
 	case !votesYes && res:
-		log.Println("Peer ", peer[0], "now votes NO on ", did[:2])
+		log.Println("Peer ", peer[:2], "now votes NO on ", did[:2])
 		dtx.Nays++
 		dtx.Yays--
 	}

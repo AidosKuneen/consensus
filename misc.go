@@ -46,6 +46,8 @@ import (
 	"time"
 )
 
+type seqLedgerID [8 + 32]byte
+
 type agedMap struct {
 	clock   clock
 	ledgers map[LedgerID]*nodeVal

@@ -712,7 +712,7 @@ func (v *Validations) Fees(id LedgerID, baseFee uint32) []uint32 {
 		},
 		func(nid NodeID, v *Validation) {
 			if v.Trusted && v.Full {
-				loadFee := v.LoadFee
+				loadFee := v.Fee
 				if loadFee > 0 {
 					res = append(res, loadFee)
 				} else {

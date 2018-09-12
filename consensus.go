@@ -78,7 +78,7 @@ func shouldCloseLedger(
 		" Prop: ", prevProposers, "/", proposersClosed,
 		" Secs: ", timeSincePrevClose,
 		" (last: ", prevRoundTime, ")", "proposervalidated", proposersValidated)
-	if (prevRoundTime < -1*time.Second) || (prevRoundTime > 10*time.Minute) || (timeSincePrevClose > 10*time.Minute) { //maybe should change from original
+	if (prevRoundTime < -1*time.Second) || (prevRoundTime > ledgerPrevInterval) || (timeSincePrevClose > ledgerPrevInterval) { //maybe should change from original
 		// These are unexpected cases, we just close the ledger
 		log.Println("shouldCloseLedger")
 		return true

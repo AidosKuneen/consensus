@@ -257,8 +257,7 @@ func (c *Consensus) startRoundInternal(
 //  @param now The network adjusted time
 //  @param newProposal The new proposal from a peer
 //  @return Whether we should do delayed relay of this proposal.
-func (c *Consensus) PeerProposal(
-	now time.Time, newPeerPos *Proposal) bool {
+func (c *Consensus) PeerProposal(now time.Time, newPeerPos *Proposal) bool {
 	peerID := newPeerPos.NodeID
 
 	// Always need to store recent positions
@@ -277,14 +276,11 @@ func (c *Consensus) PeerProposal(
 
 /** Handle a replayed or a new peer proposal.
  */
-func (c *Consensus) peerProposalInternal(
-	now time.Time,
-	newPeerProp *Proposal) bool {
+func (c *Consensus) peerProposalInternal(now time.Time, newPeerProp *Proposal) bool {
 	// Nothing to do for now if we are currently working on a ledger
 	if c.phase == phaseAccepted {
 		return false
 	}
-
 	c.now = now
 
 	peerID := newPeerProp.NodeID
@@ -324,7 +320,6 @@ func (c *Consensus) peerProposalInternal(
 			return true
 		}
 		c.currPeerPositions[peerID] = newPeerProp
-		log.Println("added prop", len(c.currPeerPositions))
 	}
 
 	if newPeerProp.isInitial() {
@@ -334,8 +329,8 @@ func (c *Consensus) peerProposalInternal(
 		c.rawCloseTimes.Peers[unixTime(newPeerProp.CloseTime.Unix())]++
 	}
 
-	log.Println("Processing peer proposal ", newPeerProp.ProposeSeq,
-		"/", newPeerProp.Position[:2])
+	log.Println("Processing peer proposal seq:", newPeerProp.ProposeSeq,
+		"/ID:", newPeerProp.Position[:2])
 
 	{
 		ait, ok := c.acquired[newPeerProp.Position]
@@ -346,7 +341,7 @@ func (c *Consensus) peerProposalInternal(
 			if set, err := c.adaptor.AcquireTxSet(newPeerProp.Position); err == nil {
 				c.GotTxSet(c.now, set)
 			} else {
-				log.Println("Don't have tx set for peer")
+				log.Println("Don't have tx set for peer", newPeerProp.Position[:2])
 			}
 			return true
 		}
@@ -525,10 +520,9 @@ func (c *Consensus) checkLedger() {
 
 	if netLgr != c.prevLedgerID {
 		log.Println("View of consensus changed during ",
-			c.phase, " status=", c.phase,
-			", ",
+			c.phase, " status=", c.phase, ", ",
 			" mode=", c.mode.mode)
-		log.Println("State on consensus change ", c)
+		log.Println("State on consensus change ")
 		c.handleWrongLedger(netLgr)
 		return
 	}
@@ -840,7 +834,7 @@ func (c *Consensus) updateOurPositions() {
 		c.result.Txns = ourNewSet
 
 		log.Println("Position change: CTime ",
-			consensusCloseTime, ", tx ", newID)
+			consensusCloseTime, ", tx ", newID[:2])
 
 		c.result.Position.changePosition(newID, consensusCloseTime, c.now)
 
@@ -947,8 +941,9 @@ func (c *Consensus) createDisputes(o TxSet) {
 	if c.result.Txns.ID() == o.ID() {
 		return
 	}
-
-	log.Println("createDisputes ", c.result.Txns.ID(), " to ", o.ID())
+	txnsid := c.result.Txns.ID()
+	oid := o.ID()
+	log.Println("createDisputes ", txnsid[:2], " to ", oid[:2])
 
 	differences := c.result.Txns.compare(o)
 
@@ -960,7 +955,8 @@ func (c *Consensus) createDisputes(o TxSet) {
 		_, ok := o[se]
 		_, ok2 := c.result.Txns[se]
 		if !((id && ok2 && !ok) || (!id && !ok2 && ok)) {
-			panic("invalid ledger")
+			log.Println(id, ok2, ok, se)
+			panic("invalid compare")
 		}
 
 		var tx TxT
@@ -978,7 +974,7 @@ func (c *Consensus) createDisputes(o TxSet) {
 			continue
 		}
 
-		log.Println("Transaction ", txID, " is disputed")
+		log.Println("Transaction ", txID[:2], " is disputed")
 
 		num := c.prevProposers
 		if num < uint(len(c.currPeerPositions)) {
