@@ -21,7 +21,9 @@ are required to compile.
 ## Install
     $ go get github.com/AidosKuneen/consensus
 
+## Usage
 
+See [test code](https://github.com/AidosKuneen/consensus/blob/master/peer_test.go).
 
 ## Dependencies and Licenses
 

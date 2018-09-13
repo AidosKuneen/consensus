@@ -44,11 +44,10 @@ package consensus
 import "log"
 
 // DisputedTx is A transaction discovered to be in dispute during conensus.
-//   During consensus, a @ref DisputedTx is created when a transaction
-//   is discovered to be disputed. The object persists only as long as
-//   the dispute.
-//   Undisputed transactions have no corresponding @ref DisputedTx object.
-//   Refer to @ref Consensus for details on the template type requirements.
+// During consensus, a @ref DisputedTx is created when a transaction
+// is discovered to be disputed. The object persists only as long as
+// the dispute.
+// Undisputed transactions have no corresponding DisputedTx object.
 //   @tparam Tx_t The type for a transaction
 //   @tparam NodeID_t The type for a node identifier
 type DisputedTx struct {

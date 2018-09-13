@@ -51,22 +51,21 @@ const (
 )
 
 //Proposal represents a proposed position taken during a round of consensus.
-//   During consensus, peers seek agreement on a set of transactions to
-//   apply to the prior ledger to generate the next ledger.  Each peer takes a
-//   position on whether to include or exclude potential transactions.
-//   The position on the set of transactions is proposed to its peers as an
-//   instance of the ConsensusProposal class.
-//   An instance of ConsensusProposal can be either our own proposal or one of
-//   our peer's.
-//   As consensus proceeds, peers may change their position on the transaction,
-//   or choose to abstain. Each successive proposal includes a strictly
-//   monotonically increasing number (or, if a peer is choosing to abstain,
-//   the special value `seqLeave`).
-//   Refer to @ref Consensus for requirements of the template arguments.
+// During consensus, peers seek agreement on a set of transactions to
+// apply to the prior ledger to generate the next ledger.  Each peer takes a
+// position on whether to include or exclude potential transactions.
+// The position on the set of transactions is proposed to its peers as an
+// instance of the ConsensusProposal class.
+// An instance of ConsensusProposal can be either our own proposal or one of
+// our peer's.
+// As consensus proceeds, peers may change their position on the transaction,
+// or choose to abstain. Each successive proposal includes a strictly
+// monotonically increasing number (or, if a peer is choosing to abstain,
+// the special value `seqLeave`).
+// Refer to @ref Consensus for requirements of the template arguments.
 //   @tparam NodeID_t Type used to uniquely identify nodes/peers
 //   @tparam LedgerID_t Type used to uniquely identify ledgers
-//   @tparam Position_t Type used to represent the position taken on transactions
-//                      under consideration during this round of consensus
+//   @tparam Position_t Type used to represent the position taken on transactions under consideration during this round of consensus
 type Proposal struct {
 	//! Unique identifier of prior ledger this proposal is based on
 	PreviousLedger LedgerID

@@ -177,20 +177,16 @@ func NewConsensus(c clock, adaptor Adaptor) *Consensus {
 }
 
 // StartRound Kick-off the next round of consensus.
-//   Called by the client code to start each round of consensus.
+// Called by the client code to start each round of consensus.
 //   @param now The network adjusted time
 //   @param prevLedgerID the ID of the last ledger
 //   @param prevLedger The last ledger
 //   @param nowUntrusted ID of nodes that are newly untrusted this round
 //   @param proposing Whether we want to send proposals to peers this round.
-//   @note @b prevLedgerID is not required to the ID of @b prevLedger since
-//   the ID may be known locally before the contents of the ledger arrive
-func (c *Consensus) StartRound(
-	now time.Time,
-	prevLedgerID LedgerID,
-	prevLedger *Ledger,
-	nowUntrusted map[NodeID]struct{},
-	isProposing bool) {
+//
+//   @note prevLedgerID is not required to the ID of prevLedger since the ID may be known locally before the contents of the ledger arrive
+func (c *Consensus) StartRound(now time.Time, prevLedgerID LedgerID, prevLedger *Ledger,
+	nowUntrusted map[NodeID]struct{}, isProposing bool) {
 	if c.firstRound {
 		// take our initial view of closeTime_ from the seed ledger
 		c.prevRoundTime = ledgerIdleInterval
@@ -458,8 +454,8 @@ func (c *Consensus) simulate(
 */
 
 // PrevLedgerID gets the previous ledger ID.
-//   The previous ledger is the last ledger seen by the consensus code and
-//   should correspond to the most recent validated ledger seen by this peer.
+// The previous ledger is the last ledger seen by the consensus code and
+// should correspond to the most recent validated ledger seen by this peer.
 //   @return ID of previous ledger
 func (c *Consensus) PrevLedgerID() LedgerID {
 	return c.prevLedgerID

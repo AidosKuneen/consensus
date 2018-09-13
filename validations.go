@@ -88,18 +88,18 @@ var (
 )
 
 // SeqEnforcer enforce validation increasing sequence requirement.
-//   Helper class for enforcing that a validation must be larger than all
-//   unexpired validation sequence numbers previously issued by the validator
-//   tracked by the instance of this class.
+// Helper class for enforcing that a validation must be larger than all
+// unexpired validation sequence numbers previously issued by the validator
+// tracked by the instance of this class.
 type SeqEnforcer struct {
 	largest Seq
 	when    time.Time
 }
 
 // Try advancing the largest observed validation ledger sequence
-//   Try setting the largest validation sequence observed, but return false
-//   if it violates the invariant that a validation must be larger than all
-//   unexpired validation sequence numbers.
+// Try setting the largest validation sequence observed, but return false
+// if it violates the invariant that a validation must be larger than all
+// unexpired validation sequence numbers.
 //   @param now The current time
 //   @param s The sequence number we want to validate
 //   @param p Validation parameters
@@ -166,19 +166,17 @@ func (m ValStatus) String() string {
 }
 
 // Validations maintains current and recent ledger Validations.
-//   Manages storage and queries related to Validations received on the network.
-//   Stores the most current validation from nodes and sets of recent
-//   Validations grouped by ledger identifier.
-//   Stored Validations are not necessarily from trusted nodes, so clients
-//   and implementations should take care to use `trusted` member functions or
-//   check the validation's trusted status.
-//   This class uses a generic interface to allow adapting Validations for
-//   specific applications. The Adaptor template implements a set of helper
-//   functions and type definitions. The code stubs below outline the
-//   interface and type requirements.
-//   @warning The Adaptor::MutexType is used to manage concurrent access to
-//            private members of Validations but does not manage any data in the
-// 		   Adaptor instance itself.
+// Manages storage and queries related to Validations received on the network.
+// Stores the most current validation from nodes and sets of recent
+// Validations grouped by ledger identifier.
+// Stored Validations are not necessarily from trusted nodes, so clients
+// and implementations should take care to use `trusted` member functions or
+// check the validation's trusted status.
+// This class uses a generic interface to allow adapting Validations for
+// specific applications. The Adaptor template implements a set of helper
+// functions and type definitions. The code stubs below outline the
+// interface and type requirements.
+//   @warning The Adaptor::MutexType is used to manage concurrent access to private members of Validations but does not manage any data in the Adaptor instance itself.
 type Validations struct {
 	// Manages concurrent access to members
 	mutex sync.Mutex
@@ -370,19 +368,16 @@ func NewValidations(a ValidationAdaptor, c clock) *Validations {
 	}
 }
 
-// CanValidateSeq eturns whether the local node can issue a validation for the given sequence
-//   number
+// CanValidateSeq eturns whether the local node can issue a validation for the given sequence number
 //   @param s The sequence number of the ledger the node wants to validate
-//   @return Whether the validation satisfies the invariant, updating the
-//           largest sequence number seen accordingly
+//   @return Whether the validation satisfies the invariant, updating the largest sequence number seen accordingly
 func (v *Validations) CanValidateSeq(s Seq) bool {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
 	return v.localSeqEnforcer.Try(v.byLedger.clock.Now(), s)
 }
 
-//Add a new validation
-//   Attempt to Add a new validation.
+//Add a new validation. Attempt to Add a new validation.
 //   @param nodeID The identity of the node issuing this validation
 //   @param val The validation to store
 //   @return The outcome
@@ -422,9 +417,7 @@ func (v *Validations) Add(nodeID NodeID, val *Validation) ValStatus {
 	return VstatCurrent
 }
 
-// Expire old validation sets
-//   Remove validation sets that were accessed more than
-//   validationSET_EXPIRES ago.
+// Expire old validation sets. Remove validation sets that were accessed more than validationSET_EXPIRES ago.
 func (v *Validations) Expire() {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -432,9 +425,9 @@ func (v *Validations) Expire() {
 }
 
 // TrustChanged updates trust status of validations
-//   Updates the trusted status of known validations to account for nodes
-//   that have been added or removed from the UNL. This also updates the trie
-//   to ensure only currently trusted nodes' validations are used.
+// Updates the trusted status of known validations to account for nodes
+// that have been added or removed from the UNL. This also updates the trie
+// to ensure only currently trusted nodes' validations are used.
 //   @param added Identifiers of nodes that are now trusted
 //   @param removed Identifiers of nodes that are no longer trusted
 func (v *Validations) TrustChanged(added, removed map[NodeID]struct{}) {
@@ -466,14 +459,12 @@ func (v *Validations) TrustChanged(added, removed map[NodeID]struct{}) {
 }
 
 // GetPreferred returns the sequence number and ID of the preferred working ledger
-//   A ledger is preferred if it has more support amongst trusted validators
-//   and is *not* an ancestor of the current working ledger; otherwise it
-//   remains the current working ledger.
-//   (Parent of preferred stays put)
+// A ledger is preferred if it has more support amongst trusted validators
+// and is *not* an ancestor of the current working ledger; otherwise it
+// remains the current working ledger.
+// (Parent of preferred stays put)
 //   @param curr The local node's current working ledger
-//   @return The sequence and id of the preferred working ledger,
-//           or Seq{0},ID{0} if no trusted validations are available to
-//           determine the preferred ledger.
+//   @return The sequence and id of the preferred working ledger, or Seq{0},ID{0} if no trusted validations are available to determine the preferred ledger.
 func (v *Validations) GetPreferred(curr *Ledger) (Seq, LedgerID) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -526,11 +517,10 @@ func (v *Validations) GetPreferred(curr *Ledger) (Seq, LedgerID) {
 }
 
 // GetPreferred2 Gets the ID of the preferred working ledger that exceeds a minimum valid
-//   ledger sequence number
+// ledger sequence number
 //   @param curr Current working ledger
 //   @param minValidSeq Minimum allowed sequence number
-//   @return ID Of the preferred ledger, or curr if the preferred ledger
-//              is not valid
+//   @return ID Of the preferred ledger, or curr if the preferred ledger is not valid
 func (v *Validations) GetPreferred2(curr *Ledger, minValidSeq Seq) LedgerID {
 	preferredSeq, preferredID := v.GetPreferred(curr)
 	if preferredSeq >= minValidSeq && preferredID != GenesisID {
@@ -540,16 +530,14 @@ func (v *Validations) GetPreferred2(curr *Ledger, minValidSeq Seq) LedgerID {
 }
 
 // GetPreferredLCL Determines the preferred last closed ledger for the next consensus round.
-//   Called before starting the next round of ledger consensus to determine the
-//   preferred working ledger. Uses the dominant peerCount ledger if no
-//   trusted validations are available.
+// Called before starting the next round of ledger consensus to determine the
+// preferred working ledger. Uses the dominant peerCount ledger if no
+// trusted validations are available.
 //   @param lcl Last closed ledger by this node
 //   @param minSeq Minimum allowed sequence number of the trusted preferred ledger
-//   @param peerCounts Map from ledger ids to count of peers with that as the
-//                     last closed ledger
+//   @param peerCounts Map from ledger ids to count of peers with that as the last closed ledger
 //   @return The preferred last closed ledger ID
-//   @note The minSeq does not apply to the peerCounts, since this function
-//         does not know their sequence number
+//   @note The minSeq does not apply to the peerCounts, since this function does not know their sequence number
 func (v *Validations) GetPreferredLCL(lcl *Ledger, minSeq Seq,
 	peerCounts map[LedgerID]uint32) LedgerID {
 	preferredSeq, preferredID := v.GetPreferred(lcl)
@@ -578,14 +566,11 @@ func (v *Validations) GetPreferredLCL(lcl *Ledger, minSeq Seq,
 	return lcl.ID()
 }
 
-//GetNodesAfter counts the number of current trusted validators working on a ledger
-//   after the specified one.
+//GetNodesAfter counts the number of current trusted validators working on a ledger after the specified one.
 //   @param ledger The working ledger
 //   @param ledgerID The preferred ledger
-//   @return The number of current trusted validators working on a descendant
-//           of the preferred ledger
-//   @note If ledger.id() != ledgerID, only counts immediate child ledgers of
-//         ledgerID
+//   @return The number of current trusted validators working on a descendan of the preferred ledger
+//   @note If ledger.id() != ledgerID, only counts immediate child ledgers of ledgerID
 func (v *Validations) GetNodesAfter(l *Ledger, id LedgerID) uint32 {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()
@@ -627,7 +612,7 @@ func (v *Validations) CurrentTrusted() []*Validation {
 }
 
 //GetCurrentNodeIDs gets the set of node ids associated with current validations
-//@return The set of node ids for active, listed validators
+//  @return The set of node ids for active, listed validators
 func (v *Validations) GetCurrentNodeIDs() map[NodeID]struct{} {
 	ret := make(map[NodeID]struct{})
 	v.mutex.Lock()

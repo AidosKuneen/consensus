@@ -274,8 +274,7 @@ func (p *Peer) ShareTxset(ts TxSet) {
 }
 
 // PrevLedgerID gets the previous ledger ID.
-//   The previous ledger is the last ledger seen by the consensus code and
-//   should correspond to the most recent validated ledger seen by this peer.
+// The previous ledger is the last ledger seen by the consensus code and should correspond to the most recent validated ledger seen by this peer.
 //   @return ID of previous ledger
 func (p *Peer) PrevLedgerID() LedgerID {
 	return p.consensus.PrevLedgerID()

@@ -199,10 +199,8 @@ const (
 )
 
 //Result encapsulates the result of consensus.
-//    Stores all relevant data for the outcome of consensus on a single
-//   ledger.
-//    @tparam Traits Traits class defining the concrete consensus types used
-//                   by the application.
+//Stores all relevant data for the outcome of consensus on a single ledger.
+//    @tparam Traits Traits class defining the concrete consensus types used by the application.
 type Result struct {
 	//! The set of transactions consensus agrees go in the ledger
 	// You must fill it when OnClose is called.
