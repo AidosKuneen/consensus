@@ -8,7 +8,7 @@ Consensus
 
 ## Overview
 
-This library is the consensus core of AidosKunene.
+This library is the consensus core of AidosKuneen.
 
 ## Requirements
 
