@@ -8,10 +8,7 @@ Consensus
 
 ## Overview
 
-This library is the consensus of AidosKunene.
-
-This software is mostly a rewrite of a [Ripple consensus](hhttps://github.com/ripple/rippled/tree/develop/src/ripple/consensus)
- in Golang.
+This library is the consensus core of AidosKunene.
 
 ## Requirements
 
@@ -28,7 +25,7 @@ are required to compile.
 
 ## Dependencies and Licenses
 
-This software includes a rewrite (from C++ to go)  of 
+This software includes a rewrite (from C++ to go)  of Ripple consensus
 
 * https://github.com/ripple/rippled/tree/develop/src/ripple/consensus
 * https://github.com/ripple/rippled/tree/develop/src/test/csf
