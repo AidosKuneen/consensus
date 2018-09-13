@@ -42,7 +42,6 @@
 package sim
 
 import (
-	"log"
 	"sort"
 	"time"
 )
@@ -104,7 +103,7 @@ func (s *scheduler) stepOne() bool {
 	q := s.que[0]
 	s.cancel(s.que[0])
 	s.clock.now = q.when
-	log.Println("run a step at", s.clock.now)
+	// log.Println("run a step at", s.clock.now)
 	q.h()
 	return true
 }
