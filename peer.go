@@ -346,6 +346,7 @@ func (p *Peer) Stop() {
 
 //Start starts the consensus.
 func (p *Peer) Start() {
+	p.stop = false
 	// TODO: Expire validations less frequently?
 	p.validations.Expire()
 	p.startRound()

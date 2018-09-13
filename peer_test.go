@@ -23,6 +23,7 @@ package consensus
 import (
 	"errors"
 	"log"
+	"sync"
 	"testing"
 	"time"
 )
@@ -40,6 +41,7 @@ func (t *tx) ID() TxID {
 
 //PeerInterface is the funcs for intererctint Peer struct.
 type adaptor struct {
+	mutex   sync.Mutex
 	others  []*adaptor
 	peer    *Peer
 	t       *testing.T
@@ -49,7 +51,9 @@ type adaptor struct {
 
 // Attempt to acquire a specific ledger.
 func (a *adaptor) AcquireLedger(id LedgerID) (*Ledger, error) {
+	a.mutex.Lock()
 	l, ok := ledgers2[id]
+	a.mutex.Unlock()
 	if ok {
 		return l, nil
 	}
@@ -88,7 +92,9 @@ func (a *adaptor) OnClose(*Ledger, time.Time, Mode) TxSet {
 
 // Called when ledger is accepted by consensus
 func (a *adaptor) OnAccept(l *Ledger) {
+	a.mutex.Lock()
 	ledgers2[l.ID()] = l.Clone()
+	a.mutex.Unlock()
 	a.openTxs = make(TxSet)
 	a.ledger = l
 }
@@ -141,6 +147,8 @@ func (a *adaptor) ShareValidaton(v *Validation) {
 
 func TestPeer(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	ledgers2 = make(map[LedgerID]*Ledger)
+	txSets = make(map[TxSetID]TxSet)
 
 	var nid [4]NodeID
 	for i := range nid {
@@ -173,11 +181,11 @@ func TestPeer(t *testing.T) {
 		}
 	}
 	log.Println("*************************same txs")
-	var tid [7]TxID
+	var tid [15]TxID
 	for i := range tid {
 		tid[i][0] = byte(i)
 	}
-	var txs [7]*tx
+	var txs [len(tid)]*tx
 	for i := range txs {
 		txs[i] = &tx{
 			id: tid[i],
@@ -238,6 +246,108 @@ func TestPeer(t *testing.T) {
 			t.Error("invalid ledger")
 		}
 		if len(v.ledger.Txs) != 0 {
+			t.Error("invalid ledger")
+		}
+	}
+	log.Println("*****************************death and alive")
+	p[0].Stop()
+	for i := 1; i < len(a); i++ {
+		a[i].openTxs[tid[8]] = txs[8]
+		txSets[a[i].openTxs.ID()] = a[i].openTxs.Clone()
+		log.Println("txid", tid[8][:2], "txset id", a[i].openTxs.ID())
+	}
+	time.Sleep(5 * time.Second)
+	p[0].Start()
+	for i := 0; i < len(a); i++ {
+		a[i].openTxs[tid[9]] = txs[9]
+		txSets[a[i].openTxs.ID()] = a[i].openTxs.Clone()
+		log.Println("txid", tid[9][:2], "txset id", a[i].openTxs.ID())
+	}
+	time.Sleep(5 * time.Second)
+	for _, v := range a {
+		if v.ledger.Seq != 6 {
+			t.Error("invalid ledger")
+		}
+		if len(v.ledger.Txs) != 1 {
+			t.Error("invalid opentxs")
+		}
+		if v.ledger.ID() != a[3].ledger.ID() {
+			t.Error("invalid ledger")
+		}
+		if _, ok := v.ledger.Txs[tid[9]]; !ok {
+			t.Error("invalid ledger")
+		}
+	}
+	for _, v := range p {
+		v.Stop()
+	}
+}
+func TestPeer2(t *testing.T) {
+	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	ledgers2 = make(map[LedgerID]*Ledger)
+	txSets = make(map[TxSetID]TxSet)
+
+	var nid [4]NodeID
+	for i := range nid {
+		nid[i][0] = byte(i)
+	}
+	var a [4]*adaptor
+	for i := range a {
+		a[i] = &adaptor{
+			t:       t,
+			openTxs: make(TxSet),
+		}
+	}
+	unl := []NodeID{nid[0], nid[1], nid[2], nid[3]}
+	var p [4]*Peer
+	p[0] = NewPeer(a[0], nid[0], unl, false)
+	a[0].peer = p[0]
+
+	for i := 1; i < len(p); i++ {
+		p[i] = NewPeer(a[i], nid[i], unl, true)
+		a[i].peer = p[i]
+	}
+	a[0].others = []*adaptor{a[1], a[2], a[3]}
+	a[1].others = []*adaptor{a[0], a[2], a[3]}
+	a[2].others = []*adaptor{a[0], a[1], a[3]}
+	a[3].others = []*adaptor{a[0], a[1], a[2]}
+	for _, pp := range p {
+		pp.Start()
+	}
+	time.Sleep(5 * time.Second)
+	for _, pp := range a {
+		if pp.ledger.Seq != 1 {
+			t.Error("invalid ledger")
+		}
+	}
+	log.Println("*************************")
+	var tid [4]TxID
+	for i := range tid {
+		tid[i][0] = byte(i)
+	}
+	var txs [len(tid)]*tx
+	for i := range txs {
+		txs[i] = &tx{
+			id: tid[i],
+		}
+	}
+	a[0].openTxs[tid[0]] = txs[0]
+	txSets[a[0].openTxs.ID()] = a[0].openTxs.Clone()
+	log.Println("txid", tid[1][:2], "txset id", a[0].openTxs.ID())
+	for i := 1; i < len(a); i++ {
+		a[i].openTxs[tid[1]] = txs[1]
+		txSets[a[i].openTxs.ID()] = a[i].openTxs.Clone()
+		log.Println("txid", tid[1][:2], "txset id", a[i].openTxs.ID())
+	}
+	time.Sleep(5 * time.Second)
+	for _, v := range a {
+		if v.ledger.Seq != 2 {
+			t.Error("invalid ledger")
+		}
+		if _, ok := v.ledger.Txs[tid[1]]; !ok {
+			t.Error("invalid ledger")
+		}
+		if _, ok := v.ledger.Txs[tid[0]]; ok {
 			t.Error("invalid ledger")
 		}
 	}
