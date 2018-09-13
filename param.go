@@ -52,28 +52,6 @@ import "time"
 var (
 	// Validation and proposal durations are relative to NetClock times, so use
 	// second resolution
-	/** The duration a validation remains current after its ledger's
-	  close time.
-
-	   This is a safety to protect against very old validations and the time
-	   it takes to adjust the close time accuracy window.
-	*/
-	validationValidWall = 5 * time.Minute
-
-	/** Duration a validation remains current after first observed.
-
-	  The duration a validation remains current after the time we
-	  first saw it. This provides faster recovery in very rare cases where the
-	  number of validations produced by the network is lower than normal
-	*/
-	validationValidLocal = 3 * time.Minute
-
-	/**  Duration pre-close in which validations are acceptable.
-
-	  The number of seconds before a close time that we consider a validation
-	  acceptable. This protects against extreme clock errors
-	*/
-	validationValidEarly = 3 * time.Minute
 
 	//! How long we consider a proposal fresh
 	proposeFreshness = 20 * time.Second

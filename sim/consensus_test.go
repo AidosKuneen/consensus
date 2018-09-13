@@ -44,7 +44,6 @@ package sim
 import (
 	"fmt"
 	"log"
-	"reflect"
 	"runtime"
 	"testing"
 	"time"
@@ -159,8 +158,8 @@ func TestSlowPeers1(t *testing.T) {
 				expect(t, !ok)
 				for i := 2; i < len(network.peers); i++ {
 					id[0] = byte(i)
-					_, ok := lcl.Txs[id]
-					expect(t, ok)
+					_, ok2 := lcl.Txs[id]
+					expect(t, ok2)
 				}
 				// Tx 0 didn't make it
 				var id2 consensus.TxID
@@ -736,7 +735,6 @@ type disruptor struct {
 }
 
 func (d *disruptor) on(who consensus.NodeID, when time.Time, ee interface{}) {
-	log.Println(reflect.TypeOf(ee))
 	switch e := ee.(type) {
 	case fullyValidateLedger:
 		if who == d.groupCfast.peers[0].id && e.ledger.Seq == 2 {

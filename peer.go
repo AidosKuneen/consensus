@@ -155,13 +155,13 @@ type Peer struct {
 	//! TxSet associated with a TxSet::ID
 	txSets map[TxSetID]TxSet
 
-	//! Whether to simulate running as validator or a tracking node
-	runAsValidator bool
-
 	//! Enforce invariants on validation sequence numbers
 	seqEnforcer SeqEnforcer
 
 	adaptor PeerInterface
+
+	//! Whether to simulate running as validator or a tracking node
+	runAsValidator bool
 
 	stop bool
 }
@@ -429,17 +429,15 @@ func (p *Peer) OnClose(prevLedger *Ledger, closeTime time.Time, mode Mode) *Resu
 	id := txns.ID()
 	pid := prevLedger.ID()
 	log.Println("closing prevledger", pid[:2], "txnsid", id[:2], "time", closeTime)
-	return &Result{
-		Txns: txns,
-		Position: &Proposal{
+	return NewResult(txns,
+		&Proposal{
 			PreviousLedger: prevLedger.ID(),
 			Position:       txns.ID(),
 			CloseTime:      closeTime,
 			Time:           time.Now(),
 			NodeID:         p.id,
 			ProposeSeq:     0,
-		},
-	}
+		})
 }
 func (p *Peer) indexOfFunc(l *Ledger) func(s Seq) LedgerID {
 	return func(s Seq) LedgerID {

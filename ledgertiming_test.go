@@ -50,7 +50,7 @@ import (
 func run(previousAgree bool, rounds Seq) (uint32, uint32, uint32) {
 	var decrease, equal, increase uint32
 	closeResolution := LedgerDefaultTimeResolution
-	nextCloseResolution := closeResolution
+	var nextCloseResolution time.Duration
 	var round Seq
 	for {
 		round++

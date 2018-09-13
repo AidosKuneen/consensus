@@ -65,21 +65,6 @@ func (s jumpCollectorByNode) on(id consensus.NodeID, when time.Time, e interface
 	s[id] = c
 }
 
-type simDurationCollector struct {
-	init  bool
-	start time.Time
-	stop  time.Time
-}
-
-func (s *simDurationCollector) on(NodeID, when time.Time, e interface{}) {
-	if !s.init {
-		s.start = when
-		s.init = true
-	} else {
-		s.stop = when
-	}
-}
-
 type jump struct {
 	id   consensus.NodeID
 	when time.Time

@@ -43,7 +43,6 @@ package sim
 
 import (
 	"encoding/binary"
-	"math"
 	"time"
 
 	"github.com/AidosKuneen/consensus"
@@ -109,9 +108,6 @@ func (s *sim) createGroup(numPeers int) *peerGroup {
 	s.allPeers.sort()
 	return res
 }
-func (s *sim) size() int {
-	return len(s.peers)
-}
 
 func (s *sim) run(ledgers int) {
 	for _, p := range s.peers {
@@ -119,14 +115,6 @@ func (s *sim) run(ledgers int) {
 		p.start()
 	}
 	s.scheduler.step()
-}
-
-func (s *sim) run2(dur time.Duration) {
-	for _, p := range s.peers {
-		p.targetLedgers = math.MaxInt32
-		p.start()
-	}
-	s.scheduler.stepFor(dur)
 }
 
 func (s *sim) synchronized(g *peerGroup) bool {

@@ -51,12 +51,6 @@ type peerGroup struct {
 	peers []*peer
 }
 
-func newPeerGroup(p *peer) *peerGroup {
-	return &peerGroup{
-		peers: []*peer{p},
-	}
-}
-
 func (pg *peerGroup) sort() {
 	sort.Slice(pg.peers, func(i, j int) bool {
 		return bytes.Compare(pg.peers[i].id[:], pg.peers[j].id[:]) < 0
@@ -67,13 +61,6 @@ func (pg *peerGroup) trust(o *peerGroup) {
 	for _, p := range pg.peers {
 		for _, target := range o.peers {
 			p.trustGraph.trust(p, target)
-		}
-	}
-}
-func (pg *peerGroup) untrust(o *peerGroup) {
-	for _, p := range pg.peers {
-		for _, target := range o.peers {
-			p.trustGraph.untrust(p, target)
 		}
 	}
 }

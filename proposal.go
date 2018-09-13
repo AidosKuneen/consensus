@@ -87,26 +87,6 @@ type Proposal struct {
 	NodeID NodeID
 }
 
-/** Constructor
-
-  @param prevLedger The previous ledger this proposal is building on.
-  @param seq The sequence number of this proposal.
-  @param position The position taken on transactions in this round.
-  @param closeTime Position of when this ledger closed.
-  @param now Time when the proposal was taken.
-  @param nodeID ID of node/peer taking this position.
-*/
-func newConsensusProposal(prev LedgerID, seq Seq, positon TxSetID, closeTime, now time.Time, nodeID NodeID) *Proposal {
-	return &Proposal{
-		PreviousLedger: prev,
-		Position:       positon,
-		CloseTime:      closeTime,
-		Time:           now,
-		ProposeSeq:     seq,
-		NodeID:         nodeID,
-	}
-}
-
 //Clone clones the proposal
 func (p *Proposal) Clone() *Proposal {
 	p2 := *p
@@ -156,9 +136,4 @@ func (p *Proposal) changePosition(
 func (p *Proposal) bowOut(now time.Time) {
 	p.Time = now
 	p.ProposeSeq = seqLeave
-}
-func (p *Proposal) equals(p2 *Proposal) bool {
-	return p.NodeID == p2.NodeID && p.ProposeSeq == p2.ProposeSeq &&
-		p.PreviousLedger == p2.PreviousLedger && p.Position == p2.Position &&
-		p.CloseTime.Equal(p2.CloseTime) && p.Time.Equal(p2.Time)
 }

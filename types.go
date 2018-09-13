@@ -159,10 +159,6 @@ func (ct *Timer) read() time.Duration {
 	return ct.Dur
 }
 
-func (ct *Timer) tick(fixed time.Duration) {
-	ct.Dur += fixed
-}
-
 func (ct *Timer) reset(tp time.Time) {
 	ct.Start = tp
 	ct.Dur = 0
@@ -233,7 +229,8 @@ type Result struct {
 	Proposers uint
 }
 
-func newConsensusResult(txns TxSet, pos *Proposal) *Result {
+//NewResult returns a new Result.
+func NewResult(txns TxSet, pos *Proposal) *Result {
 	if txns.ID() != pos.Position {
 		panic("invalid txSet and proposal")
 	}

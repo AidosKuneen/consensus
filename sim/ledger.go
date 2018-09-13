@@ -42,7 +42,6 @@
 package sim
 
 import (
-	"encoding/binary"
 	"log"
 	"time"
 
@@ -77,17 +76,6 @@ type ledger struct {
 
 var genesis = &ledger{
 	Ledger: consensus.Genesis,
-}
-
-func (l *ledger) clone() *ledger {
-	l2 := &ledger{
-		Ledger:    l.Ledger.Clone(),
-		ancestors: make([]consensus.LedgerID, len(l.ancestors)),
-	}
-	for i, a := range l.ancestors {
-		l2.ancestors[i] = a
-	}
-	return l2
 }
 
 func (l *ledger) indexOf(s consensus.Seq) consensus.LedgerID {
@@ -158,19 +146,6 @@ func (l *ledgerOracle) accept(parent *consensus.Ledger, txs consensus.TxSet,
 	return &next
 }
 
-func (l *ledgerOracle) accept2(curr *ledger, t *tx) *ledger {
-	return l.accept(
-		curr.Ledger,
-		consensus.TxSet{
-			t.id: t,
-		},
-		curr.CloseTimeResolution,
-		curr.CloseTime.Add(time.Second))
-}
-func (l *ledgerOracle) lookup(id consensus.LedgerID) *ledger {
-	return l.instances[id]
-}
-
 func (l *ledgerOracle) branches(ledgers []*consensus.Ledger) int {
 	// Tips always maintains the Ledgers with largest sequence number
 	// along all known chains.
@@ -201,43 +176,4 @@ func (l *ledgerOracle) branches(ledgers []*consensus.Ledger) int {
 	}
 	// The size of tips is the number of branches
 	return len(tips)
-}
-
-type ledgerHistoryHelper struct {
-	oracle  *ledgerOracle
-	nextTx  uint64
-	ledgers map[string]*ledger
-	seen    map[byte]struct{}
-}
-
-func newLedgerHistoryHelper() *ledgerHistoryHelper {
-	return &ledgerHistoryHelper{
-		ledgers: make(map[string]*ledger),
-	}
-}
-
-/** Get or create the ledger with the given string history.
-
-  Creates any necessary intermediate ledgers, but asserts if
-  a letter is re-used (e.g. "abc" then "adc" would assert)
-*/
-func (l *ledgerHistoryHelper) create(s string) *ledger {
-	for k, v := range l.ledgers {
-		if k == s {
-			return v
-		}
-	}
-	if _, ok := l.seen[s[len(s)-1]]; !ok {
-		panic("found")
-	}
-	l.seen[s[len(s)-1]] = struct{}{}
-	parent := l.create(s[:len(s)-1])
-	l.nextTx++
-	var tid consensus.TxID
-	binary.LittleEndian.PutUint64(tid[:], l.nextTx)
-	ll := l.oracle.accept2(parent, &tx{
-		id: tid,
-	})
-	l.ledgers[s] = ll
-	return ll
 }

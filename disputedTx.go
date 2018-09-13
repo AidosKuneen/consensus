@@ -67,10 +67,6 @@ func newDisputedTx(tr TxT, ourVote bool, numPeers uint) *DisputedTx {
 	}
 }
 
-func (dtx *DisputedTx) id() TxID {
-	return dtx.Tx.ID()
-}
-
 func (dtx *DisputedTx) setVote(peer NodeID, votesYes bool) {
 	res, exist := dtx.Votes[peer]
 	did := dtx.Tx.ID()
@@ -120,7 +116,7 @@ func (dtx *DisputedTx) updateVote(percentTime int, proposing bool) bool {
 		return false
 	}
 	weight := 0
-	newPosition := true
+	var newPosition bool
 	if proposing { // give ourselves full weight
 		// This is basically the percentage of nodes voting 'yes' (including us)
 		vote := 0

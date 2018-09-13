@@ -93,9 +93,7 @@ func (d *digraph) edge(s, t *peer) *linkType {
 	}
 	return nil
 }
-func (d *digraph) connected(s, t *peer) bool {
-	return d.edge(s, t) != nil
-}
+
 func (d *digraph) outVertices() []*peer {
 	r := make([]*peer, 0, len(d.graph))
 	for k := range d.graph {

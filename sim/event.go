@@ -66,13 +66,6 @@ import "github.com/AidosKuneen/consensus"
 // CollectorRef.f defines a type-erased holder for arbitrary Collectors.  If
 // any new events are added, the interface there needs to be updated.
 
-/** A value to be flooded to all other peers starting from this peer.
- */
-type share struct {
-	//! Event that is shared
-	V interface{}
-}
-
 /** A value relayed to another peer as part of flooding
  */
 type relay struct {

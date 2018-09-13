@@ -119,13 +119,7 @@ func (s *scheduler) step() bool {
 	}
 	return true
 }
-func (s *scheduler) stepWhile(f func() bool) bool {
-	ran := false
-	for f() && s.stepOne() {
-		ran = true
-	}
-	return ran
-}
+
 func (s *scheduler) stepUntil(until time.Time) bool {
 	for len(s.que) == 0 {
 		s.clock.now = until

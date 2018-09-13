@@ -48,12 +48,7 @@ type trustGraph struct {
 func (t *trustGraph) trust(from, to *peer) {
 	t.graph.connect2(from, to)
 }
-func (t *trustGraph) untrust(from, to *peer) {
-	t.graph.disconnect(from, to)
-}
-func (t *trustGraph) trusts(from, to *peer) {
-	t.graph.connected(from, to)
-}
+
 func (t *trustGraph) trustedPeers(a *peer) []*peer {
 	return t.graph.outVerticesw(a)
 }

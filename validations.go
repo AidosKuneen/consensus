@@ -354,22 +354,6 @@ func (v *Validations) doCurrent(pre func(int), f func(NodeID, *Validation)) {
 	}
 }
 
-/** Iterate the set of validations associated with a given ledger id
-
-   @param lock Existing lock on mutex_
-   @param ledgerID The identifier of the ledger
-   @param pre Invokable with signature(std::size_t)
-   @param f Invokable with signature (NodeID const &, Validation const &)
-
-   @note The invokable `pre` is called prior to iterating validations. The
-         argument is the number of times `f` will be called.
-   @warning The invokable f is expected to be a simple transformation of
-  its arguments and will be called with mutex_ under lock.
-*/
-func (v *Validations) loopByLedger(id LedgerID, pre func(int), f func(NodeID, *Validation)) {
-	v.byLedger.loop(id, pre, f)
-}
-
 // NewValidations is the constructor of Validatoins
 //   @param p ValidationParms to control staleness/expiration of validations
 //   @param c Clock to use for expiring validations stored by ledger

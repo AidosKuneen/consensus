@@ -52,34 +52,9 @@ import "time"
 var (
 	// Validation and proposal durations are relative to NetClock times, so use
 	// second resolution
-	/** The duration a validation remains current after its ledger's
-	  close time.
-
-	   This is a safety to protect against very old validations and the time
-	   it takes to adjust the close time accuracy window.
-	*/
-	validationValidWall = 5 * time.Minute
-
-	/** Duration a validation remains current after first observed.
-
-	  The duration a validation remains current after the time we
-	  first saw it. This provides faster recovery in very rare cases where the
-	  number of validations produced by the network is lower than normal
-	*/
-	validationValidLocal = 3 * time.Minute
-
-	/**  Duration pre-close in which validations are acceptable.
-
-	  The number of seconds before a close time that we consider a validation
-	  acceptable. This protects against extreme clock errors
-	*/
-	validationValidEarly = 3 * time.Minute
 
 	//! How long we consider a proposal fresh
 	proposeFreshness = 20 * time.Second
-
-	//! How often we force generating a new proposal to keep ours fresh
-	proposeInterval = 12 * time.Second
 
 	//-------------------------------------------------------------------------
 	// Consensus durations are relative to the internal Consenus clock and use
@@ -88,76 +63,14 @@ var (
 	//! The percentage threshold above which we can declare consensus.
 	minConsensusPCT = 80
 
-	//! The duration a ledger may remain idle before closing
-	ledgerIdleInterval = 15 * time.Second
-
-	//! The number of seconds we wait minimum to ensure participation
-	ledgerMinConsensus = 1950 * time.Millisecond
-
 	//! Minimum number of seconds to wait to ensure others have computed the LCL
 	ledgerMinClose = 2 * time.Second
 
 	//LedgerGranularity determins how often we check state or change positions
 	LedgerGranularity = 1 * time.Second
-
-	/** The minimum amount of time to consider the previous round
-	  to have taken.
-
-	  The minimum amount of time to consider the previous round
-	  to have taken. This ensures that there is an opportunity
-	  for a round at each avalanche threshold even if the
-	  previous consensus was very fast. This should be at least
-	  twice the interval between proposals (0.7s) divided by
-	  the interval between mid and late consensus ([85-50]/100).
-	*/
-	avMinConsensusTime = 5 * time.Second
-
-	//------------------------------------------------------------------------------
-	// Avalanche tuning
-	// As a function of the percent this round's duration is of the prior round,
-	// we increase the threshold for yes vots to add a tranasaction to our
-	// position.
-
-	//! Percentage of nodes on our UNL that must vote yes
-	avInitConsensusPCT = 50
-
-	//! Percentage of previous round duration before we advance
-	avMidConsensusTime = 50
-
-	//! Percentage of nodes that most vote yes after advancing
-	avMidConsensusPCT = 65
-
-	//! Percentage of previous round duration before we advance
-	avLateConsensusTime = 85
-
-	//! Percentage of nodes that most vote yes after advancing
-	avLateConsensusPCT = 70
-
-	//! Percentage of previous round duration before we are stuck
-	avStuckConsensusTime = 200
-
-	//! Percentage of nodes that must vote yes after we are stuck
-	avStuckConsensusPCT = 95
-
-	//! Percentage of nodes required to reach agreement on ledger close time
-	avCTConsensusPCT = 75
-
-	//--------------------------------------------------------------------------
-
-	/** Whether to use roundCloseTime or effCloseTime for reaching close time
-	  consensus.
-	  This was added to migrate from effCloseTime to roundCloseTime on the
-	  live network. The desired behavior (as given by the default value) is
-	  to use roundCloseTime during consensus voting and then use effCloseTime
-	  when accepting the consensus ledger.
-	*/
-	useRoundedCloseTime = true
 )
 
 const (
 	//! How often we increase the close time resolution (in numbers of ledgers)
 	increaseLedgerTimeResolutionEvery = 8
-
-	//! How often we decrease the close time resolution (in numbers of ledgers)
-	decreaseLedgerTimeResolutionEvery = 1
 )

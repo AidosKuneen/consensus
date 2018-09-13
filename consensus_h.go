@@ -97,7 +97,6 @@ func (m *monitoredMode) set(mode Mode, a Adaptor) {
 // Consensus is a generic implementation of consensus algorithm.
 type Consensus struct {
 	c                      clock
-	timePoint              time.Time
 	adaptor                Adaptor
 	phase                  consensusPhase // accepted
 	mode                   monitoredMode  //observing
@@ -970,7 +969,7 @@ func (c *Consensus) createDisputes(o TxSet) {
 		}
 		txID := tx.ID()
 
-		if _, ok := c.result.Disputes[txID]; ok {
+		if _, ok3 := c.result.Disputes[txID]; ok3 {
 			continue
 		}
 

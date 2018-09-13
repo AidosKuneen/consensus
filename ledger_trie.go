@@ -46,7 +46,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 )
 
 /** The tip of a span of ledger ancestry
@@ -342,23 +341,6 @@ func (lt *ledgerTrie) find(l *Ledger) (*node, Seq) {
 		}
 	}
 	return curr, pos
-}
-
-func (lt *ledgerTrie) dumpImpl(curr *node, offset int) string {
-	var str strings.Builder
-	if curr != nil {
-		if offset > 0 {
-			for i := 2; i < offset; i++ {
-				str.WriteString(" ")
-			}
-			str.WriteString("|-")
-		}
-		str.WriteString(curr.String())
-		for _, child := range curr.children {
-			str.WriteString(lt.dumpImpl(child, offset+1+len(curr.String())+2))
-		}
-	}
-	return str.String()
 }
 
 func newLedgerTrie() *ledgerTrie {
@@ -694,11 +676,6 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) *spanTip {
 		}
 	}
 	return curr.span.tip()
-}
-
-/** Dump an ascii representation of the trie to the stream*/
-func (lt *ledgerTrie) dump() string {
-	return lt.dumpImpl(lt.root, 0)
 }
 
 /** Check the compressed trie and support invariants.

@@ -347,17 +347,15 @@ func (p *peer) OnClose(prevLedger *consensus.Ledger, closeTime time.Time,
 	txns := p.openTxs.Clone()
 	id := txns.ID()
 	log.Println("closed #txs", len(p.openTxs), "pid", p.id[0], "txnsid", id[:2], "time", closeTime)
-	return &consensus.Result{
-		Txns: txns,
-		Position: &consensus.Proposal{
+	return consensus.NewResult(txns,
+		&consensus.Proposal{
 			PreviousLedger: prevLedger.ID(),
 			Position:       txns.ID(),
 			CloseTime:      closeTime,
 			Time:           p.now(),
 			NodeID:         p.id,
 			ProposeSeq:     0,
-		},
-	}
+		})
 }
 
 func (p *peer) OnAccept(result *consensus.Result, prevLedger *consensus.Ledger,
@@ -626,9 +624,8 @@ func (p *peer) handle(vv interface{}) bool {
 		log.Println("peer", p.id[0], "handling a txset", id[:2])
 		_, ok := p.txSets[id]
 		if !ok {
-			s := consensus.TxSet(v)
-			p.txSets[id] = s
-			p.consensus.GotTxSet(p.now(), s)
+			p.txSets[id] = v
+			p.consensus.GotTxSet(p.now(), v)
 		}
 		// relay only if new
 		return !ok

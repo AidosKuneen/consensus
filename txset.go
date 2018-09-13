@@ -75,7 +75,9 @@ func (t TxSet) ID() TxSetID {
 	})
 	h := sha256.New()
 	for _, id := range ids {
-		h.Write(id[:])
+		if _, err := h.Write(id[:]); err != nil {
+			panic(err)
+		}
 	}
 	var id TxSetID
 	copy(id[:], h.Sum(nil))

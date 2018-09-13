@@ -43,7 +43,6 @@ package consensus
 
 import (
 	"bytes"
-	"encoding/binary"
 	"sort"
 	"testing"
 	"time"
@@ -66,19 +65,6 @@ func newNodeT(peerID NodeID) *nodeT {
 		nodeID:  peerID,
 		signIdx: 1,
 	}
-}
-
-func (n *nodeT) currKey() [40]byte {
-	var r [40]byte
-	copy(r[:], n.nodeID[:])
-	binary.LittleEndian.PutUint32(r[32:], n.signIdx)
-	return r
-}
-
-func (n *nodeT) masterKey() [40]byte {
-	var r [40]byte
-	copy(r[:], n.nodeID[:])
-	return r
 }
 
 func (n *nodeT) validate(id LedgerID, seq Seq, signOffset, seenOffset time.Duration, full bool) *Validation {
@@ -576,12 +562,12 @@ func TestTrustedByLedgerFunctions(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 	for _, n := range []*nodeT{na, nb, nc} {
-		v := n.validate3(ac)
-		if harness.add(v) != VstatCurrent {
+		v2 := n.validate3(ac)
+		if harness.add(v2) != VstatCurrent {
 			t.Error("invalid")
 		}
-		if v.Trusted {
-			trustedValidations[v.LedgerID] = append(trustedValidations[v.LedgerID], v)
+		if v2.Trusted {
+			trustedValidations[v2.LedgerID] = append(trustedValidations[v2.LedgerID], v2)
 		}
 	}
 	v = nd.validate3(a)
@@ -593,11 +579,11 @@ func TestTrustedByLedgerFunctions(t *testing.T) {
 		t.Error("invalid")
 	}
 
-	for id, v := range trustedValidations {
-		sort.Slice(v, func(i, j int) bool {
-			return bytes.Compare(v[i].bytes(), v[j].bytes()) < 0
+	for id, v2 := range trustedValidations {
+		sort.Slice(v2, func(i, j int) bool {
+			return bytes.Compare(v2[i].bytes(), v2[j].bytes()) < 0
 		})
-		if int(harness.vals.NumTrustedForLedger(id)) != len(v) {
+		if int(harness.vals.NumTrustedForLedger(id)) != len(v2) {
 			t.Error("invalid")
 		}
 		vs1 := harness.vals.GetTrustedForLedger(id)
@@ -608,7 +594,7 @@ func TestTrustedByLedgerFunctions(t *testing.T) {
 		})
 		for i := range vs1 {
 			vi := vs1[i]
-			if !bytes.Equal(vi.bytes(), v[i].bytes()) {
+			if !bytes.Equal(vi.bytes(), v2[i].bytes()) {
 				t.Error("invalid")
 			}
 		}

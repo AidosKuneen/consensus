@@ -42,8 +42,6 @@
 package sim
 
 import (
-	"bytes"
-
 	"github.com/AidosKuneen/consensus"
 )
 
@@ -54,10 +52,4 @@ type tx struct {
 
 func (t *tx) ID() consensus.TxID {
 	return t.id
-}
-func (t *tx) less(t2 *tx) bool {
-	return bytes.Compare(t.id[:], t2.id[:]) < 0
-}
-func (t *tx) equal(t2 *tx) bool {
-	return bytes.Equal(t.id[:], t2.id[:])
 }
