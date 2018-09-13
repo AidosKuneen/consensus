@@ -61,7 +61,7 @@ func expect(t *testing.T, b bool) bool {
 }
 
 func TestStandalone(t *testing.T) {
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	s := newSim()
 	peers := s.createGroup(1)
 	p := peers.peers[0]
@@ -80,7 +80,7 @@ func TestStandalone(t *testing.T) {
 	expect(t, p.prevProposers == 0)
 }
 func TestPeersAgree(t *testing.T) {
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	sim := newSim()
 	peers := sim.createGroup(5)
 
@@ -114,7 +114,7 @@ func TestPeersAgree(t *testing.T) {
 	}
 }
 func TestSlowPeers1(t *testing.T) {
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Several tests of a complete trust graph with a subset of peers
 	// that have significantly longer network delays to the rest of the
 	// network
@@ -172,7 +172,7 @@ func TestSlowPeers1(t *testing.T) {
 }
 
 func TestSlowPeers2(t *testing.T) {
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	// Run two tests
 	//  1. The slow peers are participating in consensus
 	//  2. The slow peers are just observing
@@ -290,7 +290,7 @@ func TestCloseTimeDisagree(t *testing.T) {
 	// This test therefore has 6 nodes, with 2 nodes having each type of
 	// skew. Then no majority (1/3 < 1/2) of nodes will agree on an
 	// actual close time.
-	log.SetFlags(log.Ltime | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Llongfile)
 	sim := newSim()
 	grA := sim.createGroup(2)
 	grB := sim.createGroup(2)
@@ -350,7 +350,7 @@ func TestWrongLCL1(t *testing.T) {
 		// This topology can potentially fork with the above trust relations
 		// but that is intended for this test.
 
-		log.SetFlags(log.Ltime | log.Llongfile)
+		// log.SetFlags(log.Ltime | log.Llongfile)
 		sim := newSim()
 		jumps := make(jumpCollectorByNode)
 		sim.collectors = append(sim.collectors, jumps.on)
@@ -460,7 +460,7 @@ func TestWrongLCL2(t *testing.T) {
 	// to process a validation, loner node will detect the wrongLCL
 	// after it is already in the establish phase of the next round.
 
-	log.SetFlags(log.Ltime | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Llongfile)
 	sim := newSim()
 
 	loner := sim.createGroup(1)
@@ -505,7 +505,7 @@ func TestConsensusCloseTimeRounding(t *testing.T) {
 
 	for _, useRoundedCloseTime := range []bool{false, true} {
 		t.Log(useRoundedCloseTime)
-		log.SetFlags(log.Ltime | log.Llongfile)
+		// log.SetFlags(log.Ltime | log.Llongfile)
 		sim := newSim()
 
 		// This requires a group of 4 fast and 2 slow peers to create a
@@ -642,7 +642,7 @@ func TestConsensusCloseTimeRounding(t *testing.T) {
 }
 
 func TestFork(t *testing.T) {
-	log.SetFlags(log.Ltime | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Llongfile)
 
 	numPeers := 10
 	// Vary overlap between two UNLs
@@ -696,7 +696,7 @@ func TestFork(t *testing.T) {
 }
 
 func TestHubNetwork(t *testing.T) {
-	log.SetFlags(log.Ltime | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Llongfile)
 
 	// Simulate a set of 5 validators that aren't directly connected but
 	// rely on a single hub node for communication
@@ -791,7 +791,7 @@ func TestPreferredByBranch(t *testing.T) {
 	//   EVEN though C was fully validated by one node
 	// - In the new approach, 2 votes for D are not enough to outweight the
 	//   8 implicit votes for C, so nodes will avalanche to C instead
-	log.SetFlags(log.Ltime | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Llongfile)
 
 	sim := newSim()
 	dc := &disruptor{}

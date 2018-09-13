@@ -43,7 +43,6 @@ package consensus
 
 import (
 	"bytes"
-	"log"
 	"math/rand"
 	"testing"
 )
@@ -51,7 +50,7 @@ import (
 func TestGetPreferred1(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	p := lt.getPreferred(0)
 	if p.id != GenesisID {
@@ -66,7 +65,7 @@ func TestGetPreferred1(t *testing.T) {
 func TestGetPreferred2(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	lt.insert(abc, 1)
@@ -79,7 +78,7 @@ func TestGetPreferred2(t *testing.T) {
 func TestGetPreferred3(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
@@ -97,7 +96,7 @@ func TestGetPreferred3(t *testing.T) {
 func TestGetPreferred4(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
@@ -115,7 +114,7 @@ func TestGetPreferred4(t *testing.T) {
 func TestGetPreferred5(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
@@ -148,7 +147,7 @@ func TestGetPreferred5(t *testing.T) {
 func TestGetPreferred6(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
@@ -181,7 +180,7 @@ func TestGetPreferred6(t *testing.T) {
 func TestGetPreferred7(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	abcd := newLedger("abcd")
 	abce := newLedger("abce")
@@ -207,7 +206,7 @@ func TestGetPreferred7(t *testing.T) {
 func TestGetPreferred8(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
@@ -244,7 +243,7 @@ func TestGetPreferred8(t *testing.T) {
 func TestGetPreferred9(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
 	// Single entry by itself
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	abc := newLedger("abc")
 	abcd := newLedger("abcd")
@@ -278,7 +277,7 @@ func TestGetPreferred10(t *testing.T) {
 	      |
 	      G
 	*/
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	a := newLedger("a")
 	ab := newLedger("ab")
@@ -416,7 +415,7 @@ func TestGetPreferred10(t *testing.T) {
 // invariant, do some tests that exercise it.
 func TestRootRelated(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	if lt.remove(Genesis, 1) {
 		t.Error("invalid removal")
@@ -467,7 +466,7 @@ func TestRootRelated(t *testing.T) {
 }
 func TestStress(t *testing.T) {
 	ledgers = make(map[LedgerID]*Ledger)
-	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 
 	// Test quasi-randomly add/remove supporting for different ledgers
