@@ -41,7 +41,11 @@
 
 package consensus
 
-import "time"
+import (
+	"crypto/sha256"
+	"encoding/binary"
+	"time"
+)
 
 const (
 	//< Sequence value when a peer initially joins consensus
@@ -135,4 +139,20 @@ func (p *Proposal) changePosition(
 func (p *Proposal) bowOut(now time.Time) {
 	p.Time = now
 	p.ProposeSeq = seqLeave
+}
+
+//ID returns the ID of Proposal v.
+func (p *Proposal) ID() ProposalID {
+	return sha256.Sum256(p.bytes())
+}
+
+func (p *Proposal) bytes() []byte {
+	bs := make([]byte, 32+32+4+4+8+32)
+	copy(bs, p.PreviousLedger[:])
+	copy(bs[32:], p.Position[:])
+	binary.LittleEndian.PutUint32(bs[32+32:], uint32(p.CloseTime.Unix()))
+	binary.LittleEndian.PutUint32(bs[32+32+4:], uint32(p.Time.Unix()))
+	binary.LittleEndian.PutUint64(bs[32+32+4+4:], uint64(p.ProposeSeq))
+	copy(bs[32+4+4+8:], p.NodeID[:])
+	return bs
 }

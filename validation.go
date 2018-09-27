@@ -54,7 +54,7 @@ type Validation struct {
 	SignTime time.Time
 	SeenTime time.Time
 	NodeID   NodeID
-	Trusted  bool
+	Trusted  bool //must be set by receivers, not by the sender
 	Full     bool
 	Fee      uint32
 }

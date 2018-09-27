@@ -60,6 +60,9 @@ type LedgerID [32]byte
 //ValidationID is a id for a ledger.
 type ValidationID [32]byte
 
+//ProposalID is a id for a Proposal.
+type ProposalID [32]byte
+
 //Seq is a sequence no.
 type Seq uint64
 
