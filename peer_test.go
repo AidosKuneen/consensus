@@ -69,10 +69,14 @@ func (a *adaptor) OnStale(*Validation) {} //nothing
 func (a *adaptor) Flush(remaining map[NodeID]*Validation) {} //nothing
 
 // Acquire the transaction set associated with a proposed position.
-func (a *adaptor) AcquireTxSet(id TxSetID) (TxSet, error) {
+func (a *adaptor) AcquireTxSet(id TxSetID) ([]TxT, error) {
 	l, ok := txSets[id]
 	if ok {
-		return l, nil
+		txs := make([]TxT, len(l))
+		for _, ll := range l {
+			txs = append(txs, ll)
+		}
+		return txs, nil
 	}
 	return nil, errors.New("not found")
 }

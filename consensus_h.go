@@ -80,6 +80,7 @@ package consensus
 
 import (
 	"log"
+	"sort"
 	"time"
 )
 
@@ -790,7 +791,16 @@ func (c *Consensus) updateOurPositions() {
 			" nw:", neededWeight, " thrV:", threshVote,
 			" thrC:", threshConsensus)
 
-		for tim, cnt := range closeTimeVotes {
+		tims := make([]unixTime, 0, len(closeTimeVotes))
+		for tim := range closeTimeVotes {
+			tims = append(tims, tim)
+		}
+		sort.Slice(tims, func(i, j int) bool {
+			return tims[i] < tims[j]
+		})
+
+		for _, tim := range tims {
+			cnt := closeTimeVotes[tim]
 			log.Println("CCTime: seq ", c.previousLedger.Seq+1, ": ",
 				time.Unix(int64(tim), 0), " has ", cnt, ", ", threshVote, " required")
 

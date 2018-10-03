@@ -43,6 +43,7 @@ package sim
 
 import (
 	"encoding/binary"
+	"log"
 	"time"
 
 	"github.com/AidosKuneen/consensus"
@@ -124,6 +125,7 @@ func (s *sim) synchronized(g *peerGroup) bool {
 	ref := g.peers[0]
 	sync := true
 	for _, p := range g.peers {
+		log.Println(p.id, p.lastClosedLedger.ID())
 		if p.lastClosedLedger.ID() != ref.lastClosedLedger.ID() ||
 			p.fullyValidatedLedger.ID() != ref.fullyValidatedLedger.ID() {
 			sync = false

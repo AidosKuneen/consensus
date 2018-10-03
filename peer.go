@@ -61,7 +61,7 @@ type PeerInterface interface {
 	Flush(remaining map[NodeID]*Validation)
 
 	// Acquire the transaction set associated with a proposed position.
-	AcquireTxSet(TxSetID) (TxSet, error)
+	AcquireTxSet(TxSetID) ([]TxT, error)
 
 	// Whether any transactions are in the open ledger
 	HasOpenTransactions() bool
@@ -204,8 +204,12 @@ func (p *Peer) AcquireTxSet(setID TxSetID) (TxSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.addTxSet(ts)
-	return ts, nil
+	txset := make(TxSet, len(ts))
+	for _, t := range ts {
+		txset[t.ID()] = t
+	}
+	p.addTxSet(txset)
+	return txset, nil
 }
 
 //HasOpenTransactions returns true if having txs that should be approved.
