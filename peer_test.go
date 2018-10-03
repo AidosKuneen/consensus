@@ -30,6 +30,7 @@ import (
 
 var ledgers2 = make(map[LedgerID]*Ledger)
 var txSets = make(map[TxSetID]TxSet)
+var mutex sync.RWMutex
 
 type tx struct {
 	id TxID
@@ -51,9 +52,9 @@ type adaptor struct {
 
 // Attempt to acquire a specific ledger.
 func (a *adaptor) AcquireLedger(id LedgerID) (*Ledger, error) {
-	a.mutex.Lock()
+	mutex.Lock()
 	l, ok := ledgers2[id]
-	a.mutex.Unlock()
+	mutex.Unlock()
 	if ok {
 		return l, nil
 	}
@@ -72,7 +73,7 @@ func (a *adaptor) Flush(remaining map[NodeID]*Validation) {} //nothing
 func (a *adaptor) AcquireTxSet(id TxSetID) ([]TxT, error) {
 	l, ok := txSets[id]
 	if ok {
-		txs := make([]TxT, len(l))
+		txs := make([]TxT, 0, len(l))
 		for _, ll := range l {
 			txs = append(txs, ll)
 		}
@@ -96,9 +97,9 @@ func (a *adaptor) OnClose(*Ledger, time.Time, Mode) TxSet {
 
 // Called when ledger is accepted by consensus
 func (a *adaptor) OnAccept(l *Ledger) {
-	a.mutex.Lock()
+	mutex.Lock()
 	ledgers2[l.ID()] = l.Clone()
-	a.mutex.Unlock()
+	mutex.Unlock()
 	a.openTxs = make(TxSet)
 	a.ledger = l
 }
@@ -107,7 +108,9 @@ func (a *adaptor) OnAccept(l *Ledger) {
 func (a *adaptor) Propose(prop *Proposal) {
 	for _, o := range a.others {
 		go func(o *adaptor) {
+			o.mutex.Lock()
 			o.peer.AddProposal(prop.Clone())
+			o.mutex.Unlock()
 		}(o)
 	}
 }
@@ -116,7 +119,9 @@ func (a *adaptor) Propose(prop *Proposal) {
 func (a *adaptor) SharePosition(prop *Proposal) {
 	for _, o := range a.others {
 		go func(o *adaptor) {
+			o.mutex.Lock()
 			o.peer.AddProposal(prop.Clone())
+			o.mutex.Unlock()
 		}(o)
 	}
 }
@@ -144,7 +149,9 @@ func (a *adaptor) ShareValidaton(v *Validation) {
 	for _, o := range a.others {
 		go func(o *adaptor) {
 			vv := *v
+			o.mutex.Lock()
 			o.peer.AddValidation(&vv)
+			o.mutex.Unlock()
 		}(o)
 	}
 }

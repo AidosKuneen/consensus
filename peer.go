@@ -204,7 +204,7 @@ func (p *Peer) AcquireTxSet(setID TxSetID) (TxSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	txset := make(TxSet, len(ts))
+	txset := make(TxSet)
 	for _, t := range ts {
 		txset[t.ID()] = t
 	}

@@ -289,7 +289,7 @@ func TestCloseTimeDisagree(t *testing.T) {
 	// This test therefore has 6 nodes, with 2 nodes having each type of
 	// skew. Then no majority (1/3 < 1/2) of nodes will agree on an
 	// actual close time.
-	log.SetFlags(log.Ltime | log.Llongfile)
+	// log.SetFlags(log.Ltime | log.Llongfile)
 	sim := newSim()
 	grA := sim.createGroup(2)
 	grB := sim.createGroup(2)
