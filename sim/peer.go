@@ -607,7 +607,7 @@ func (p *peer) handle(vv interface{}) bool {
 		dest := p.peerPositions[v.PreviousLedger]
 		ok := false
 		for _, d := range dest {
-			if *d == *v {
+			if d.ID() == v.ID() {
 				ok = true
 				break
 			}

@@ -665,7 +665,7 @@ func TestFlush(t *testing.T) {
 		t.Error("invalid")
 	}
 	for k, v := range harness.staledata.flushed {
-		if *exp[k] != *v {
+		if !bytes.Equal(exp[k].bytes(), v.bytes()) {
 			t.Error("invalid")
 		}
 	}

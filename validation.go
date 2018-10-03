@@ -49,14 +49,15 @@ import (
 
 //Validation is a validation info of ledger.
 type Validation struct {
-	LedgerID LedgerID
-	Seq      Seq
-	SignTime time.Time
-	SeenTime time.Time
-	NodeID   NodeID
-	Trusted  bool //must be set by receivers, not by the sender
-	Full     bool
-	Fee      uint32
+	LedgerID  LedgerID
+	Seq       Seq
+	SignTime  time.Time
+	SeenTime  time.Time
+	NodeID    NodeID
+	Trusted   bool //must be set by receivers, not by the sender
+	Full      bool
+	Fee       uint32
+	Signature []byte
 }
 
 //ID returns the ID of validation v.

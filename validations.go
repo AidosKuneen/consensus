@@ -43,7 +43,6 @@ package consensus
 
 import (
 	"bytes"
-	"sync"
 	"time"
 )
 
@@ -179,8 +178,6 @@ func (m ValStatus) String() string {
 //   @warning The Adaptor::MutexType is used to manage concurrent access to private members of Validations but does not manage any data in the Adaptor instance itself.
 type Validations struct {
 	// Manages concurrent access to members
-	mutex sync.Mutex
-
 	// Validations from currently listed and trusted nodes (partial and full)
 	current map[NodeID]*Validation
 
@@ -372,8 +369,6 @@ func NewValidations(a ValidationAdaptor, c clock) *Validations {
 //   @param s The sequence number of the ledger the node wants to validate
 //   @return Whether the validation satisfies the invariant, updating the largest sequence number seen accordingly
 func (v *Validations) CanValidateSeq(s Seq) bool {
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
 	return v.localSeqEnforcer.Try(v.byLedger.clock.Now(), s)
 }
 
@@ -385,9 +380,6 @@ func (v *Validations) Add(nodeID NodeID, val *Validation) ValStatus {
 	if !isCurrent(v.Adaptor.Now(), val.SignTime, val.SeenTime) {
 		return VstatStale
 	}
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
-
 	// Check that validation sequence is greater than any non-expired
 	// validations sequence from that validator
 	now := v.byLedger.clock.Now()
@@ -419,8 +411,6 @@ func (v *Validations) Add(nodeID NodeID, val *Validation) ValStatus {
 
 // Expire old validation sets. Remove validation sets that were accessed more than validationSET_EXPIRES ago.
 func (v *Validations) Expire() {
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
 	v.byLedger.expire(validationSetExpires)
 }
 
@@ -431,9 +421,6 @@ func (v *Validations) Expire() {
 //   @param added Identifiers of nodes that are now trusted
 //   @param removed Identifiers of nodes that are no longer trusted
 func (v *Validations) TrustChanged(added, removed map[NodeID]struct{}) {
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
-
 	for id, val := range v.current {
 		if _, ok := added[id]; ok {
 			val.Trusted = true
@@ -466,8 +453,6 @@ func (v *Validations) TrustChanged(added, removed map[NodeID]struct{}) {
 //   @param curr The local node's current working ledger
 //   @return The sequence and id of the preferred working ledger, or Seq{0},ID{0} if no trusted validations are available to determine the preferred ledger.
 func (v *Validations) GetPreferred(curr *Ledger) (Seq, LedgerID) {
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
 	var preferred *spanTip
 	v.withTrie(func(trie *ledgerTrie) {
 		preferred = trie.getPreferred(v.localSeqEnforcer.largest)
@@ -572,9 +557,6 @@ func (v *Validations) GetPreferredLCL(lcl *Ledger, minSeq Seq,
 //   @return The number of current trusted validators working on a descendan of the preferred ledger
 //   @note If ledger.id() != ledgerID, only counts immediate child ledgers of ledgerID
 func (v *Validations) GetNodesAfter(l *Ledger, id LedgerID) uint32 {
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
-
 	// Use trie if ledger is the right one
 	var num uint32
 	if l.ID() == id {
@@ -597,8 +579,6 @@ func (v *Validations) GetNodesAfter(l *Ledger, id LedgerID) uint32 {
 //   @return Vector of validations from currently trusted validators
 func (v *Validations) CurrentTrusted() []*Validation {
 	var ret []*Validation
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
 	v.doCurrent(
 		func(numValidations int) {
 			ret = make([]*Validation, 0, numValidations)
@@ -615,8 +595,6 @@ func (v *Validations) CurrentTrusted() []*Validation {
 //  @return The set of node ids for active, listed validators
 func (v *Validations) GetCurrentNodeIDs() map[NodeID]struct{} {
 	ret := make(map[NodeID]struct{})
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
 	v.doCurrent(
 		func(numValidations int) {
 		},
@@ -632,8 +610,6 @@ func (v *Validations) GetCurrentNodeIDs() map[NodeID]struct{} {
 //     @return The number of trusted validations
 func (v *Validations) NumTrustedForLedger(id LedgerID) uint {
 	var count uint
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
 	v.byLedger.loop(
 		id,
 		func(i int) {}, // nothing to reserve
@@ -650,8 +626,6 @@ func (v *Validations) NumTrustedForLedger(id LedgerID) uint {
 //      @return Trusted validations associated with ledger
 func (v *Validations) GetTrustedForLedger(id LedgerID) []*Validation {
 	var res []*Validation
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
 	v.byLedger.loop(
 		id,
 		func(numValidations int) {
@@ -672,8 +646,6 @@ func (v *Validations) GetTrustedForLedger(id LedgerID) []*Validation {
 //     @return Vector of Fees
 func (v *Validations) Fees(id LedgerID, baseFee uint32) []uint32 {
 	var res []uint32
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
 	v.byLedger.loop(
 		id,
 		func(numValidations int) {
@@ -695,8 +667,6 @@ func (v *Validations) Fees(id LedgerID, baseFee uint32) []uint32 {
 //Flush all current validations
 func (v *Validations) Flush() {
 	flushed := make(map[NodeID]*Validation)
-	v.mutex.Lock()
-	defer v.mutex.Unlock()
 	for nid, v := range v.current {
 		flushed[nid] = v
 	}

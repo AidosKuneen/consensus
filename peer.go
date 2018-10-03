@@ -44,7 +44,6 @@ package consensus
 import (
 	"log"
 	"math"
-	"sync"
 	"time"
 )
 
@@ -125,8 +124,6 @@ func (a *valAdaptor) Now() time.Time {
 
 //Peer is the API interface for consensus.
 type Peer struct {
-	mutex sync.RWMutex
-
 	//! Generic consensus
 	consensus *Consensus
 
@@ -282,8 +279,6 @@ func (p *Peer) PrevLedgerID() LedgerID {
 
 //AddTxSet adds a Txset
 func (p *Peer) AddTxSet(ts TxSet) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 	p.addTxSet(ts)
 }
 
@@ -296,8 +291,6 @@ func (p *Peer) addTxSet(ts TxSet) {
 
 //AddProposal adds a proposal
 func (p *Peer) AddProposal(prop *Proposal) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 	p.addProposal(prop)
 }
 
@@ -320,7 +313,7 @@ func (p *Peer) addProposal(prop *Proposal) {
 	dest := p.PeerPositions[prop.PreviousLedger]
 	ok = false
 	for _, d := range dest {
-		if *d == *prop {
+		if d.ID() == prop.ID() {
 			ok = true
 			break
 		}
@@ -338,8 +331,6 @@ func (p *Peer) earliestAllowedSeq() Seq {
 
 //Stop stops consensus.
 func (p *Peer) Stop() {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 	p.stop = true
 }
 
@@ -352,26 +343,20 @@ func (p *Peer) Start() {
 	go func() {
 		for {
 			log.Println("starting node", p.id[:2], time.Now())
-			p.mutex.RLock()
 			stop := p.stop
-			p.mutex.RUnlock()
 			if stop {
 				log.Println("end of consensus")
 				return
 			}
-			p.mutex.Lock()
 			p.consensus.TimerEntry(time.Now())
-			p.mutex.Unlock()
 			log.Println("ending node", p.id[:2], time.Now())
 			time.Sleep(LedgerGranularity)
 		}
 	}()
 }
 
-//AdddValidation adds a trusted validation and return true if it is worth forwarding
-func (p *Peer) AdddValidation(v *Validation) bool {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+//AddValidation adds a trusted validation and return true if it is worth forwarding
+func (p *Peer) AddValidation(v *Validation) bool {
 	return p.adddValidation(v)
 }
 
@@ -438,7 +423,9 @@ func (p *Peer) OnClose(prevLedger *Ledger, closeTime time.Time, mode Mode) *Resu
 			ProposeSeq:     0,
 		})
 }
-func (p *Peer) indexOfFunc(l *Ledger) func(s Seq) LedgerID {
+
+//IndexOfFunc returns the IndexOf func for the ledger l.
+func (p *Peer) IndexOfFunc(l *Ledger) func(s Seq) LedgerID {
 	return func(s Seq) LedgerID {
 		if s > l.Seq {
 			panic("not found")
@@ -470,7 +457,7 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 		ParentCloseTime:     prevLedger.CloseTime,
 		CloseTimeAgree:      !result.Position.CloseTime.IsZero(),
 	}
-	newLedger.IndexOf = p.indexOfFunc(newLedger)
+	newLedger.IndexOf = p.IndexOfFunc(newLedger)
 	if newLedger.CloseTimeAgree {
 		newLedger.CloseTime = EffCloseTime(result.Position.CloseTime, closeResolution, prevLedger.CloseTime)
 	} else {

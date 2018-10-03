@@ -140,7 +140,7 @@ func (a *adaptor) ShareValidaton(v *Validation) {
 	for _, o := range a.others {
 		go func(o *adaptor) {
 			vv := *v
-			o.peer.AdddValidation(&vv)
+			o.peer.AddValidation(&vv)
 		}(o)
 	}
 }

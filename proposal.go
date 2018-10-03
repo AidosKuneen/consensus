@@ -87,7 +87,8 @@ type Proposal struct {
 	ProposeSeq Seq
 
 	//! The identifier of the node taking this position
-	NodeID NodeID
+	NodeID    NodeID
+	Signature []byte
 }
 
 //Clone clones the proposal
