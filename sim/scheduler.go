@@ -58,9 +58,12 @@ import (
   step_while functions to process scheduled events.
 */
 
+var no int
+
 type byWhen struct {
 	when time.Time
 	h    func()
+	no   int
 }
 
 type scheduler struct {
@@ -72,10 +75,18 @@ func (s *scheduler) at(w time.Time, h func()) *byWhen {
 	b := &byWhen{
 		when: w,
 		h:    h,
+		no:   no,
 	}
+	no++
 	s.que = append(s.que, b)
 	sort.Slice(s.que, func(i, j int) bool {
-		return s.que[i].when.Before(s.que[j].when)
+		if s.que[i].when.Before(s.que[j].when) {
+			return true
+		}
+		if s.que[i].when.After(s.que[j].when) {
+			return false
+		}
+		return s.que[i].no < s.que[j].no
 	})
 	return b
 }

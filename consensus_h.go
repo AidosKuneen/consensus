@@ -282,10 +282,12 @@ func (c *Consensus) peerProposalInternal(now time.Time, newPeerProp *Proposal) b
 	peerID := newPeerProp.NodeID
 
 	if newPeerProp.PreviousLedger != c.prevLedgerID {
-		log.Println("Got proposal for ", newPeerProp.PreviousLedger[:2],
-			" but we are on ", c.prevLedgerID[:2])
+		log.Println("Got proposal for", newPeerProp.PreviousLedger[:2], "from", peerID[:2],
+			"but we are on", c.prevLedgerID[:2])
 		return false
 	}
+	log.Println("Got proposal for", newPeerProp.PreviousLedger[:2], "from", peerID[:2],
+		"and we are on", c.prevLedgerID[:2])
 
 	if _, ok := c.deadNodes[peerID]; ok {
 		log.Println("Position from dead node: ", peerID)

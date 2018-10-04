@@ -687,6 +687,8 @@ func (p *peer) startRound() {
 
 	// Not yet modeling dynamic UNL.
 	nowUntrusted := make(map[consensus.NodeID]struct{})
+	log.Println("peer", p.id, "start", bestLCL)
+
 	p.consensus.StartRound(
 		p.now(), bestLCL, p.lastClosedLedger, nowUntrusted, p.runAsValidator)
 }

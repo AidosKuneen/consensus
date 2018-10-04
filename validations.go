@@ -365,7 +365,7 @@ func NewValidations(a ValidationAdaptor, c clock) *Validations {
 	}
 }
 
-// CanValidateSeq eturns whether the local node can issue a validation for the given sequence number
+// CanValidateSeq returns whether the local node can issue a validation for the given sequence number
 //   @param s The sequence number of the ledger the node wants to validate
 //   @return Whether the validation satisfies the invariant, updating the largest sequence number seen accordingly
 func (v *Validations) CanValidateSeq(s Seq) bool {
@@ -453,6 +453,10 @@ func (v *Validations) TrustChanged(added, removed map[NodeID]struct{}) {
 //   @param curr The local node's current working ledger
 //   @return The sequence and id of the preferred working ledger, or Seq{0},ID{0} if no trusted validations are available to determine the preferred ledger.
 func (v *Validations) GetPreferred(curr *Ledger) (Seq, LedgerID) {
+	return v.getPreferred(curr)
+}
+
+func (v *Validations) getPreferred(curr *Ledger) (Seq, LedgerID) {
 	var preferred *spanTip
 	v.withTrie(func(trie *ledgerTrie) {
 		preferred = trie.getPreferred(v.localSeqEnforcer.largest)
@@ -507,7 +511,7 @@ func (v *Validations) GetPreferred(curr *Ledger) (Seq, LedgerID) {
 //   @param minValidSeq Minimum allowed sequence number
 //   @return ID Of the preferred ledger, or curr if the preferred ledger is not valid
 func (v *Validations) GetPreferred2(curr *Ledger, minValidSeq Seq) LedgerID {
-	preferredSeq, preferredID := v.GetPreferred(curr)
+	preferredSeq, preferredID := v.getPreferred(curr)
 	if preferredSeq >= minValidSeq && preferredID != GenesisID {
 		return preferredID
 	}
@@ -525,7 +529,7 @@ func (v *Validations) GetPreferred2(curr *Ledger, minValidSeq Seq) LedgerID {
 //   @note The minSeq does not apply to the peerCounts, since this function does not know their sequence number
 func (v *Validations) GetPreferredLCL(lcl *Ledger, minSeq Seq,
 	peerCounts map[LedgerID]uint32) LedgerID {
-	preferredSeq, preferredID := v.GetPreferred(lcl)
+	preferredSeq, preferredID := v.getPreferred(lcl)
 	// Trusted validations exist
 	if preferredID != GenesisID && preferredSeq > 0 {
 		if preferredSeq >= minSeq {

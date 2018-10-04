@@ -42,7 +42,6 @@ func (t *tx) ID() TxID {
 
 //PeerInterface is the funcs for intererctint Peer struct.
 type adaptor struct {
-	mutex   sync.Mutex
 	others  []*adaptor
 	peer    *Peer
 	t       *testing.T
@@ -52,9 +51,9 @@ type adaptor struct {
 
 // Attempt to acquire a specific ledger.
 func (a *adaptor) AcquireLedger(id LedgerID) (*Ledger, error) {
-	mutex.Lock()
+	mutex.RLock()
 	l, ok := ledgers2[id]
-	mutex.Unlock()
+	mutex.RUnlock()
 	if ok {
 		return l, nil
 	}
@@ -97,20 +96,21 @@ func (a *adaptor) OnClose(*Ledger, time.Time, Mode) TxSet {
 
 // Called when ledger is accepted by consensus
 func (a *adaptor) OnAccept(l *Ledger) {
+	log.Println("onaccept")
 	mutex.Lock()
 	ledgers2[l.ID()] = l.Clone()
 	mutex.Unlock()
 	a.openTxs = make(TxSet)
+	log.Println(a.peer.id, l)
 	a.ledger = l
+	log.Println("end of onaccept", a.peer.id[:2], a.ledger.ID())
 }
 
 // Propose the position to Peers.
 func (a *adaptor) Propose(prop *Proposal) {
 	for _, o := range a.others {
 		go func(o *adaptor) {
-			o.mutex.Lock()
 			o.peer.AddProposal(prop.Clone())
-			o.mutex.Unlock()
 		}(o)
 	}
 }
@@ -119,9 +119,7 @@ func (a *adaptor) Propose(prop *Proposal) {
 func (a *adaptor) SharePosition(prop *Proposal) {
 	for _, o := range a.others {
 		go func(o *adaptor) {
-			o.mutex.Lock()
 			o.peer.AddProposal(prop.Clone())
-			o.mutex.Unlock()
 		}(o)
 	}
 }
@@ -149,9 +147,7 @@ func (a *adaptor) ShareValidaton(v *Validation) {
 	for _, o := range a.others {
 		go func(o *adaptor) {
 			vv := *v
-			o.mutex.Lock()
 			o.peer.AddValidation(&vv)
-			o.mutex.Unlock()
 		}(o)
 	}
 }
@@ -186,7 +182,10 @@ func TestPeer(t *testing.T) {
 		pp.Start()
 	}
 	time.Sleep(5 * time.Second)
-	for _, pp := range a {
+	for i, pp := range a {
+		if pp.ledger == nil {
+			t.Error("invalid ledger", i)
+		}
 		if pp.ledger.Seq != 1 {
 			t.Error("invalid ledger")
 		}

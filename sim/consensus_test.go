@@ -789,7 +789,7 @@ func TestPreferredByBranch(t *testing.T) {
 	//   EVEN though C was fully validated by one node
 	// - In the new approach, 2 votes for D are not enough to outweight the
 	//   8 implicit votes for C, so nodes will avalanche to C instead
-	// log.SetFlags(log.Ltime | log.Llongfile)
+	log.SetFlags(log.Ltime | log.Llongfile)
 
 	sim := newSim()
 	dc := &disruptor{}
