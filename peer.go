@@ -49,6 +49,7 @@ import (
 )
 
 //PeerInterface is the funcs for intererctint Peer struct.
+//don't call funcs in peer struct in these callbacks or will cause deadlock.
 type PeerInterface interface {
 	// Attempt to acquire a specific ledger.
 	AcquireLedger(LedgerID) (*Ledger, error)
@@ -103,6 +104,7 @@ type valAdaptor struct {
 }
 
 func (a *valAdaptor) AcquireLedger(id LedgerID) (*Ledger, error) {
+	//ValidationAdaptor
 	return a.p.AcquireLedger(id)
 }
 
@@ -110,16 +112,19 @@ func (a *valAdaptor) AcquireLedger(id LedgerID) (*Ledger, error) {
 // it is called by Validations while it may be iterating Validations
 // under lock
 func (a *valAdaptor) OnStale(v *Validation) {
+	//ValidationAdaptor
 	a.p.adaptor.OnStale(v)
 }
 
 // Flush the remaining validations (typically done on shutdown)
 func (a *valAdaptor) Flush(remaining map[NodeID]*Validation) {
+	//ValidationAdaptor
 	a.p.adaptor.Flush(remaining)
 }
 
 // Return the current network time (used to determine staleness)
 func (a *valAdaptor) Now() time.Time {
+	//ValidationAdaptor
 	return time.Now()
 }
 
@@ -190,11 +195,13 @@ func NewPeer(adaptor PeerInterface, i NodeID, unl []NodeID, runAsValidator bool)
 
 //AcquireLedger gets the ledger whose ID is ledgerID.
 func (p *Peer) AcquireLedger(ledgerID LedgerID) (*Ledger, error) {
+	//Adaptor
 	return p.adaptor.AcquireLedger(ledgerID)
 }
 
 // AcquireTxSet Attempt to acquire the TxSet associated with the given ID
 func (p *Peer) AcquireTxSet(setID TxSetID) (TxSet, error) {
+	//Adaptor
 	ts, err := p.adaptor.AcquireTxSet(setID)
 	if err != nil {
 		return nil, err
@@ -208,11 +215,13 @@ func (p *Peer) AcquireTxSet(setID TxSetID) (TxSet, error) {
 
 //HasOpenTransactions returns true if having txs that should be approved.
 func (p *Peer) HasOpenTransactions() bool {
+	//Adaptor
 	return p.adaptor.HasOpenTransactions()
 }
 
 // ProposersValidated is the number of proposers that have validated the given ledger
 func (p *Peer) ProposersValidated(prevLedger LedgerID) uint {
+	//Adaptor
 	//This funcs is used for determing if the node closes right now.
 	//But it causes consensus too fast, so for now we prevent radically faster consensus.
 	return 0
@@ -223,17 +232,14 @@ func (p *Peer) ProposersValidated(prevLedger LedgerID) uint {
 // given ledger; if prevLedger.id() != prevLedgerID, use prevLedgerID
 // for the determination
 func (p *Peer) ProposersFinished(prevLedger *Ledger, prevLedgerID LedgerID) uint {
-	p.RLock()
-	defer p.RUnlock()
+	//Adaptor
 	return uint(p.validations.GetNodesAfter(prevLedger, prevLedgerID))
 }
 
 // GetPrevLedger returns the ID of the last closed (and validated) ledger that the
 // application thinks consensus should use as the prior ledger.
 func (p *Peer) GetPrevLedger(ledgerID LedgerID, ledger *Ledger, mode Mode) LedgerID {
-	p.RLock()
-	defer p.RUnlock()
-
+	//Adaptor
 	// only do if we are past the genesis ledger
 	if ledger.Seq == 0 {
 		return ledgerID
@@ -250,26 +256,31 @@ func (p *Peer) GetPrevLedger(ledgerID LedgerID, ledger *Ledger, mode Mode) Ledge
 
 // Propose the position to peers.
 func (p *Peer) Propose(pos *Proposal) {
+	//Adaptor
 	p.adaptor.Propose(pos)
 }
 
 // OnModeChange is Called whenever consensus operating mode changes
 func (p *Peer) OnModeChange(from, to Mode) {
+	//Adaptor
 	p.adaptor.OnModeChange(from, to)
 }
 
 // SharePosition share a received peer proposal with other peer's.
 func (p *Peer) SharePosition(pos *Proposal) {
+	//Adaptor
 	p.adaptor.SharePosition(pos)
 }
 
 // ShareTx shares a received peer proposal with other peer's.
 func (p *Peer) ShareTx(tx TxT) {
+	//Adaptor
 	p.adaptor.ShareTx(tx)
 }
 
 // ShareTxset shares given transaction set with peers
 func (p *Peer) ShareTxset(ts TxSet) {
+	//Adaptor
 	p.adaptor.ShareTxset(ts)
 }
 
@@ -339,7 +350,9 @@ func (p *Peer) Start() {
 			if stop {
 				return
 			}
+			p.Lock()
 			p.consensus.TimerEntry(time.Now())
+			p.Unlock()
 			time.Sleep(LedgerGranularity)
 		}
 	}()
@@ -349,10 +362,10 @@ func (p *Peer) Start() {
 func (p *Peer) AddValidation(v *Validation) bool {
 	p.Lock()
 	defer p.Unlock()
-	return p.adddValidation(v)
+	return p.addValidation(v)
 }
 
-func (p *Peer) adddValidation(v *Validation) bool {
+func (p *Peer) addValidation(v *Validation) bool {
 	v.Trusted = true
 	v.SeenTime = time.Now()
 	res := p.validations.Add(v.NodeID, v)
@@ -458,10 +471,8 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 	log.Println("onaccept txset", result.Position.Position[:2], "prev ledger", pid[:2],
 		"closetime", rawCloseTime.Self, "new ledger", nid[:2], "seq", newLedger.Seq)
 	log.Println("proposers", result.Proposers, "round time", result.RoundTime.Dur)
-	p.Lock()
 	p.PeerPositions = make(map[LedgerID][]*Proposal)
 	p.lastClosedLedger = newLedger
-	p.Unlock()
 
 	// Only send validation if the new ledger is compatible with our
 	// fully validated ledger
@@ -470,9 +481,7 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 	// Can only send one validated ledger per seq
 	consensusFail := result.State == StateMovedOn
 	if p.runAsValidator && isCompatible && !consensusFail {
-		p.Lock()
 		enf := p.seqEnforcer.Try(time.Now(), newLedger.Seq)
-		p.Unlock()
 		if enf {
 			isFull := mode == ModeProposing
 
@@ -487,14 +496,10 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 			// share the new validation; it is trusted by the receiver
 			p.adaptor.ShareValidaton(&v)
 			// we trust ourselves
-			p.Lock()
-			p.adddValidation(&v)
-			p.Unlock()
+			p.addValidation(&v)
 		}
 	}
-	p.RLock()
 	p.checkFullyValidated(newLedger)
-	p.RUnlock()
 	p.adaptor.OnAccept(newLedger)
 	// kick off the next round...
 	// in the actual implementation, this passes back through

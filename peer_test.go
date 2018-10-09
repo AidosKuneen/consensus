@@ -109,18 +109,14 @@ func (a *adaptor) OnAccept(l *Ledger) {
 // Propose the position to Peers.
 func (a *adaptor) Propose(prop *Proposal) {
 	for _, o := range a.others {
-		go func(o *adaptor) {
-			o.peer.AddProposal(prop.Clone())
-		}(o)
+		o.peer.addProposal(prop.Clone())
 	}
 }
 
 // Share a received Peer proposal with other Peer's.
 func (a *adaptor) SharePosition(prop *Proposal) {
 	for _, o := range a.others {
-		go func(o *adaptor) {
-			o.peer.AddProposal(prop.Clone())
-		}(o)
+		o.peer.addProposal(prop.Clone())
 	}
 }
 
@@ -131,9 +127,7 @@ func (a *adaptor) receiveTx(t TxT) {
 // Share a disputed transaction with Peers
 func (a *adaptor) ShareTx(t TxT) {
 	for _, o := range a.others {
-		go func(o *adaptor) {
-			o.receiveTx(t)
-		}(o)
+		o.receiveTx(t)
 	}
 }
 
@@ -145,10 +139,8 @@ func (a *adaptor) ShareTxset(ts TxSet) {
 // Share my validation
 func (a *adaptor) ShareValidaton(v *Validation) {
 	for _, o := range a.others {
-		go func(o *adaptor) {
-			vv := *v
-			o.peer.AddValidation(&vv)
-		}(o)
+		vv := *v
+		o.peer.addValidation(&vv)
 	}
 }
 
