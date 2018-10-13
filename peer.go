@@ -166,6 +166,8 @@ type Peer struct {
 	runAsValidator bool
 
 	stop bool
+
+	lastValidation *Validation
 }
 
 func param() {
@@ -337,6 +339,8 @@ func (p *Peer) Stop() {
 	p.stop = true
 }
 
+var resendValidationWaitTime = time.Minute
+
 //Start starts the consensus.
 func (p *Peer) Start() {
 	p.stop = false
@@ -354,6 +358,16 @@ func (p *Peer) Start() {
 			p.consensus.TimerEntry(time.Now())
 			p.Unlock()
 			time.Sleep(LedgerGranularity)
+		}
+	}()
+	go func() {
+		for {
+			p.RLock()
+			if p.lastValidation != nil {
+				p.adaptor.ShareValidaton(p.lastValidation)
+			}
+			p.RUnlock()
+			time.Sleep(resendValidationWaitTime)
 		}
 	}()
 }
@@ -497,6 +511,7 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 			p.adaptor.ShareValidaton(&v)
 			// we trust ourselves
 			p.addValidation(&v)
+			p.lastValidation = &v
 		}
 	}
 	p.checkFullyValidated(newLedger)

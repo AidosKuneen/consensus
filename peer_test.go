@@ -257,7 +257,9 @@ func TestPeer(t *testing.T) {
 			t.Error("invalid ledger")
 		}
 	}
-	log.Println("*****************************death and alive")
+	resendValidationWaitTime = 3 * time.Second
+	log.Println("*****************************die and alive")
+	log.Println("p0 die")
 	p[0].Stop()
 	for i := 1; i < len(a); i++ {
 		a[i].openTxs[tid[8]] = txs[8]
@@ -266,14 +268,10 @@ func TestPeer(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 	p[0].Start()
-	for i := 0; i < len(a); i++ {
-		a[i].openTxs[tid[9]] = txs[9]
-		txSets[a[i].openTxs.ID()] = a[i].openTxs.Clone()
-		log.Println("txid", tid[9][:2], "txset id", a[i].openTxs.ID())
-	}
-	time.Sleep(5 * time.Second)
+	log.Println("p0 alive")
+	time.Sleep(10 * time.Second)
 	for _, v := range a {
-		if v.ledger.Seq != 6 {
+		if v.ledger.Seq != 5 {
 			t.Error("invalid ledger")
 		}
 		if len(v.ledger.Txs) != 1 {
@@ -282,7 +280,7 @@ func TestPeer(t *testing.T) {
 		if v.ledger.ID() != a[3].ledger.ID() {
 			t.Error("invalid ledger")
 		}
-		if _, ok := v.ledger.Txs[tid[9]]; !ok {
+		if _, ok := v.ledger.Txs[tid[8]]; !ok {
 			t.Error("invalid ledger")
 		}
 	}
