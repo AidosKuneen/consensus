@@ -443,7 +443,7 @@ func (p *Peer) OnClose(prevLedger *Ledger, closeTime time.Time, mode Mode) *Resu
 }
 
 //IndexOfFunc returns the IndexOf func for the ledger l.
-func (p *Peer) IndexOfFunc(l *Ledger) func(s Seq) LedgerID {
+func IndexOfFunc(l *Ledger, acquireLedger func(LedgerID) (*Ledger, error)) func(s Seq) LedgerID {
 	return func(s Seq) LedgerID {
 		if s > l.Seq {
 			panic("not found")
@@ -454,7 +454,7 @@ func (p *Peer) IndexOfFunc(l *Ledger) func(s Seq) LedgerID {
 		var ll *Ledger
 		for ll = l; ll.Seq != s && ll.Seq > 0; {
 			var err error
-			ll, err = p.adaptor.AcquireLedger(ll.ParentID)
+			ll, err = acquireLedger(ll.ParentID)
 			if err != nil {
 				panic(err)
 			}
@@ -474,7 +474,7 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 		ParentCloseTime:     prevLedger.CloseTime,
 		CloseTimeAgree:      !result.Position.CloseTime.IsZero(),
 	}
-	newLedger.IndexOf = p.IndexOfFunc(newLedger)
+	newLedger.IndexOf = IndexOfFunc(newLedger, p.adaptor.AcquireLedger)
 	if newLedger.CloseTimeAgree {
 		newLedger.CloseTime = EffCloseTime(result.Position.CloseTime, closeResolution, prevLedger.CloseTime)
 	} else {

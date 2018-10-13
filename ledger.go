@@ -78,8 +78,8 @@ type Ledger struct {
 	CloseTime           time.Time
 	ParentCloseTime     time.Time
 	CloseTimeAgree      bool
-	IndexOf             func(Seq) LedgerID
-	id                  LedgerID //for test
+	IndexOf             func(Seq) LedgerID `msgpack:"-"`
+	id                  LedgerID           //for test
 }
 
 //Genesis is a genesis Ledger.
