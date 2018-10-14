@@ -63,7 +63,7 @@ func run(previousAgree bool, rounds Seq) (uint32, uint32, uint32) {
 		default:
 			equal++
 		}
-		nextCloseResolution, closeResolution = closeResolution, nextCloseResolution
+		closeResolution = nextCloseResolution
 		if round >= rounds {
 			break
 		}
