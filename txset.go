@@ -70,6 +70,9 @@ func (t TxSet) ID() TxSetID {
 	for id := range t {
 		ids = append(ids, id)
 	}
+	if len(t) == 1 {
+		return TxSetID(ids[0])
+	}
 	sort.Slice(ids, func(i, j int) bool {
 		return bytes.Compare(ids[i][:], ids[j][:]) < 0
 	})

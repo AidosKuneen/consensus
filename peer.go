@@ -91,6 +91,8 @@ type PeerInterface interface {
 
 	// Share my validation
 	ShareValidaton(*Validation)
+
+	ShouldAccept(*Result) bool
 }
 
 type realclock struct{}
@@ -199,6 +201,12 @@ func NewPeer(adaptor PeerInterface, i NodeID, unl []NodeID, runAsValidator bool)
 func (p *Peer) AcquireLedger(ledgerID LedgerID) (*Ledger, error) {
 	//Adaptor
 	return p.adaptor.AcquireLedger(ledgerID)
+}
+
+//ShouldAccept returns true if the result should be accepted.
+func (p *Peer) ShouldAccept(result *Result) bool {
+	//Adaptor
+	return p.adaptor.ShouldAccept(result)
 }
 
 // AcquireTxSet Attempt to acquire the TxSet associated with the given ID
@@ -480,6 +488,9 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 	} else {
 		newLedger.CloseTime = prevLedger.CloseTime.Add(time.Second)
 	}
+	p.checkFullyValidated(newLedger)
+	p.adaptor.OnAccept(newLedger)
+
 	nid := newLedger.ID()
 	pid := prevLedger.ID()
 	log.Println("onaccept txset", result.Position.Position[:2], "prev ledger", pid[:2],
@@ -514,8 +525,6 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 			p.lastValidation = &v
 		}
 	}
-	p.checkFullyValidated(newLedger)
-	p.adaptor.OnAccept(newLedger)
 	// kick off the next round...
 	// in the actual implementation, this passes back through
 	// network ops

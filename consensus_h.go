@@ -353,7 +353,6 @@ func (c *Consensus) peerProposalInternal(now time.Time, newPeerProp *Proposal) b
 //TimerEntry drives consensus forward by calling periodically.
 //@param now The network adjusted time
 func (c *Consensus) TimerEntry(now time.Time) {
-	log.Println("mode:", c.phase)
 	// Nothing to do if we are currently working on a ledger
 	if c.phase == phaseAccepted {
 		return
@@ -628,6 +627,11 @@ func (c *Consensus) phaseEstablish() {
 
 	if !c.haveCloseTimeConsensus {
 		log.Println("We have TX consensus but not CT consensus")
+		return
+	}
+
+	if !c.adaptor.ShouldAccept(c.result) {
+		log.Println("acceptance is denied by adaptor")
 		return
 	}
 

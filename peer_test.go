@@ -93,6 +93,9 @@ func (a *adaptor) OnModeChange(Mode, Mode) {} //nothing
 func (a *adaptor) OnClose(*Ledger, time.Time, Mode) TxSet {
 	return a.openTxs
 }
+func (a *adaptor) ShouldAccept(*Result) bool {
+	return true
+}
 
 // Called when ledger is accepted by consensus
 func (a *adaptor) OnAccept(l *Ledger) {

@@ -142,6 +142,8 @@ type Adaptor interface {
 
 	// Share given transaction set with peers
 	ShareTxset(TxSet)
+
+	ShouldAccept(*Result) bool
 }
 
 type clock interface {

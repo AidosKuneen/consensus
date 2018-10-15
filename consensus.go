@@ -73,14 +73,14 @@ func shouldCloseLedger(
 	timeSincePrevClose time.Duration, // Time since last ledger's close time
 	openTime time.Duration, // Time waiting to close this ledger
 	idleInterval time.Duration) bool {
-	log.Println("shouldCloseLedger? Trans=",
-		anyTransactions,
-		" Prop: ", prevProposers, "/", proposersClosed,
-		" Secs: ", timeSincePrevClose,
-		" (last: ", prevRoundTime, ")", "proposervalidated", proposersValidated)
+
 	if (prevRoundTime < -1*time.Second) || (prevRoundTime > ledgerPrevInterval) || (timeSincePrevClose > ledgerPrevInterval) { //maybe should change from original
+		log.Println("shouldCloseLedger Trans=",
+			anyTransactions,
+			" Prop: ", prevProposers, "/", proposersClosed,
+			" Secs: ", timeSincePrevClose,
+			" (last: ", prevRoundTime, ")", "proposervalidated", proposersValidated)
 		// These are unexpected cases, we just close the ledger
-		log.Println("shouldCloseLedger")
 		return true
 	}
 

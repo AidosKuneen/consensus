@@ -243,6 +243,10 @@ func (p *peer) trusts(oID consensus.NodeID) bool {
 	}
 	return false
 }
+func (p *peer) ShouldAccept(*consensus.Result) bool {
+	return true
+}
+
 func (p *peer) AcquireLedger(ledgerID consensus.LedgerID) (*consensus.Ledger, error) {
 	it, ok := p.ledgers[ledgerID]
 	if ok {
