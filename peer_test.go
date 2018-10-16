@@ -276,7 +276,7 @@ func TestPeer(t *testing.T) {
 		log.Println("txid", tid[8][:2], "txset id", a[i].openTxs.ID())
 	}
 	time.Sleep(5 * time.Second)
-	ctxs[0], cancels[0] = context.WithCancel(context.Background())
+	ctxs[0], cancels[0] = context.WithCancel(ctx)
 	p[0].Start(ctxs[0])
 	log.Println("p0 alive")
 	time.Sleep(10 * time.Second)
@@ -294,6 +294,7 @@ func TestPeer(t *testing.T) {
 			t.Error("invalid ledger")
 		}
 	}
+
 }
 func TestPeer2(t *testing.T) {
 	log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)

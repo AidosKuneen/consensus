@@ -346,9 +346,11 @@ func (p *Peer) Start(ctx context.Context) {
 	p.startRound()
 	p.validations.Expire()
 	go func() {
+		ctx2, cancel2 := context.WithCancel(ctx)
+		defer cancel2()
 		for {
 			select {
-			case <-ctx.Done():
+			case <-ctx2.Done():
 				return
 			case <-time.After(LedgerGranularity):
 				p.Lock()
