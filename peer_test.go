@@ -71,7 +71,9 @@ func (a *adaptor) Flush(remaining map[NodeID]*Validation) {} //nothing
 
 // Acquire the transaction set associated with a proposed position.
 func (a *adaptor) AcquireTxSet(id TxSetID) ([]TxT, error) {
+	mutex.RLock()
 	l, ok := txSets[id]
+	mutex.RUnlock()
 	if ok {
 		txs := make([]TxT, 0, len(l))
 		for _, ll := range l {
@@ -141,7 +143,9 @@ func (a *adaptor) ShareTx(t TxT) {
 
 // Share given transaction set with Peers
 func (a *adaptor) ShareTxset(ts TxSet) {
+	mutex.Lock()
 	txSets[ts.ID()] = ts.Clone()
+	mutex.Unlock()
 }
 
 // Share my validation
