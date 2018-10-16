@@ -42,6 +42,7 @@
 package consensus
 
 import (
+	"context"
 	"log"
 	"math"
 	"sync"
@@ -166,8 +167,6 @@ type Peer struct {
 
 	//! Whether to simulate running as validator or a tracking node
 	runAsValidator bool
-
-	stop bool
 
 	lastValidation *Validation
 }
@@ -340,42 +339,38 @@ func (p *Peer) earliestAllowedSeq() Seq {
 	return p.fullyValidatedLedger.Seq
 }
 
-//Stop stops consensus.
-func (p *Peer) Stop() {
-	p.Lock()
-	defer p.Unlock()
-	p.stop = true
-}
-
 var resendValidationWaitTime = time.Minute
 
 //Start starts the consensus.
-func (p *Peer) Start() {
-	p.stop = false
+func (p *Peer) Start(ctx context.Context) {
 	p.startRound()
 	p.validations.Expire()
 	go func() {
 		for {
-			p.RLock()
-			stop := p.stop
-			p.RUnlock()
-			if stop {
+			select {
+			case <-ctx.Done():
 				return
+			case <-time.After(LedgerGranularity):
+				p.Lock()
+				p.consensus.TimerEntry(time.Now())
+				p.Unlock()
 			}
-			p.Lock()
-			p.consensus.TimerEntry(time.Now())
-			p.Unlock()
-			time.Sleep(LedgerGranularity)
 		}
 	}()
 	go func() {
+		ctx2, cancel2 := context.WithCancel(ctx)
+		defer cancel2()
 		for {
-			p.RLock()
-			if p.lastValidation != nil {
-				p.adaptor.ShareValidaton(p.lastValidation)
+			select {
+			case <-ctx2.Done():
+				return
+			case <-time.After(resendValidationWaitTime):
+				p.RLock()
+				if p.lastValidation != nil {
+					p.adaptor.ShareValidaton(p.lastValidation)
+				}
+				p.RUnlock()
 			}
-			p.RUnlock()
-			time.Sleep(resendValidationWaitTime)
 		}
 	}()
 }

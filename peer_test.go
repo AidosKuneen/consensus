@@ -21,6 +21,7 @@
 package consensus
 
 import (
+	"context"
 	"errors"
 	"log"
 	"sync"
@@ -171,6 +172,10 @@ func TestPeer(t *testing.T) {
 	}
 	unl := []NodeID{nid[0], nid[1], nid[2], nid[3]}
 	var p [4]*Peer
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var ctxs [4]context.Context
+	var cancels [4]context.CancelFunc
 	for i := range p {
 		p[i] = NewPeer(a[i], nid[i], unl, true)
 		a[i].peer = p[i]
@@ -179,8 +184,9 @@ func TestPeer(t *testing.T) {
 	a[1].others = []*adaptor{a[0], a[2], a[3]}
 	a[2].others = []*adaptor{a[0], a[1], a[3]}
 	a[3].others = []*adaptor{a[0], a[1], a[2]}
-	for _, pp := range p {
-		pp.Start()
+	for i, pp := range p {
+		ctxs[i], cancels[i] = context.WithCancel(ctx)
+		pp.Start(ctxs[i])
 	}
 	time.Sleep(5 * time.Second)
 	for i, pp := range a {
@@ -263,14 +269,15 @@ func TestPeer(t *testing.T) {
 	resendValidationWaitTime = 3 * time.Second
 	log.Println("*****************************die and alive")
 	log.Println("p0 die")
-	p[0].Stop()
+	cancels[0]()
 	for i := 1; i < len(a); i++ {
 		a[i].openTxs[tid[8]] = txs[8]
 		txSets[a[i].openTxs.ID()] = a[i].openTxs.Clone()
 		log.Println("txid", tid[8][:2], "txset id", a[i].openTxs.ID())
 	}
 	time.Sleep(5 * time.Second)
-	p[0].Start()
+	ctxs[0], cancels[0] = context.WithCancel(context.Background())
+	p[0].Start(ctxs[0])
 	log.Println("p0 alive")
 	time.Sleep(10 * time.Second)
 	for _, v := range a {
@@ -286,9 +293,6 @@ func TestPeer(t *testing.T) {
 		if _, ok := v.ledger.Txs[tid[8]]; !ok {
 			t.Error("invalid ledger")
 		}
-	}
-	for _, v := range p {
-		v.Stop()
 	}
 }
 func TestPeer2(t *testing.T) {
@@ -309,6 +313,10 @@ func TestPeer2(t *testing.T) {
 	}
 	unl := []NodeID{nid[0], nid[1], nid[2], nid[3]}
 	var p [4]*Peer
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var ctxs [4]context.Context
+	var cancels [4]context.CancelFunc
 	p[0] = NewPeer(a[0], nid[0], unl, false)
 	a[0].peer = p[0]
 
@@ -320,8 +328,9 @@ func TestPeer2(t *testing.T) {
 	a[1].others = []*adaptor{a[0], a[2], a[3]}
 	a[2].others = []*adaptor{a[0], a[1], a[3]}
 	a[3].others = []*adaptor{a[0], a[1], a[2]}
-	for _, pp := range p {
-		pp.Start()
+	for i, pp := range p {
+		ctxs[i], cancels[i] = context.WithCancel(ctx)
+		pp.Start(ctxs[i])
 	}
 	time.Sleep(5 * time.Second)
 	for _, pp := range a {
@@ -359,8 +368,5 @@ func TestPeer2(t *testing.T) {
 		if _, ok := v.ledger.Txs[tid[0]]; ok {
 			t.Error("invalid ledger")
 		}
-	}
-	for _, v := range p {
-		v.Stop()
 	}
 }
