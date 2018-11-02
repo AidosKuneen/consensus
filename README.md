@@ -2,6 +2,7 @@
 [![GoDoc](https://godoc.org/github.com/AidosKuneen/consensus?status.svg)](https://godoc.org/github.com/AidosKuneen/consensus)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/AidosKuneen/consensus/master/LICENSE)
 [![Coverage Status](https://coveralls.io/repos/github/AidosKuneen/consensus/badge.svg?branch=master)](https://coveralls.io/github/AidosKuneen/consensus?branch=master)
+[![GolangCI](https://golangci.com/badges/github.com/AidosKuneen/consensus.svg)](https://golangci.com/r/github.com/AidosKuneen/consensus) 
 
 Consensus 
 =====
