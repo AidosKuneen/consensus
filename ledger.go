@@ -44,6 +44,7 @@ package consensus
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"strconv"
 	"time"
 )
 
@@ -91,7 +92,7 @@ var Genesis = &Ledger{
 		if s == 0 {
 			return GenesisID
 		}
-		panic("not found")
+		panic("not found" + strconv.Itoa(int(s)))
 	},
 }
 
