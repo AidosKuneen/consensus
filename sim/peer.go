@@ -217,7 +217,7 @@ func newPeer(i consensus.NodeID, s *scheduler, o *ledgerOracle, n *basicNetwork,
 	p.validations = consensus.NewValidations(&valAdaptor{
 		p: p,
 	}, p.scheduler.clock)
-	p.ledgers[consensus.GenesisID] = p.lastClosedLedger
+	p.ledgers[consensus.Genesis.ID()] = p.lastClosedLedger
 	tg.trust(p, p)
 	return p
 }
@@ -681,7 +681,7 @@ func (p *peer) startRound() {
 	// yet
 	bestLCL :=
 		p.validations.GetPreferred2(p.lastClosedLedger, p.earliestAllowedSeq())
-	if bestLCL == consensus.GenesisID {
+	if bestLCL == consensus.Genesis.ID() {
 		bestLCL = p.lastClosedLedger.ID()
 	}
 	p.issue(&startRound{

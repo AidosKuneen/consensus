@@ -43,6 +43,7 @@ package consensus
 
 import (
 	"context"
+	"encoding/hex"
 	"log"
 	"math"
 	"sync"
@@ -404,9 +405,12 @@ func (p *Peer) startRound() {
 	// Between rounds, we take the majority ledger
 	// In the future, consider taking Peer dominant ledger if no validations
 	// yet
+	id := p.lastClosedLedger.ID()
+	gen := Genesis.ID()
+	log.Println(p.lastClosedLedger.Seq, hex.EncodeToString(id[:]), hex.EncodeToString(gen[:]))
 	bestLCL :=
 		p.validations.GetPreferred2(p.lastClosedLedger, p.earliestAllowedSeq())
-	if bestLCL == GenesisID {
+	if bestLCL == Genesis.ID() {
 		bestLCL = p.lastClosedLedger.ID()
 	}
 	pid := p.lastClosedLedger.ID()
@@ -454,7 +458,7 @@ func IndexOfFunc(l *Ledger, acquireLedger func(LedgerID) (*Ledger, error)) func(
 			panic("not found")
 		}
 		if s == 0 {
-			return GenesisID
+			return Genesis.ID()
 		}
 		var ll *Ledger
 		for ll = l; ll.Seq != s && ll.Seq > 0; {

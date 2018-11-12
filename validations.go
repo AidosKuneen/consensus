@@ -512,7 +512,7 @@ func (v *Validations) getPreferred(curr *Ledger) (Seq, LedgerID) {
 //   @return ID Of the preferred ledger, or curr if the preferred ledger is not valid
 func (v *Validations) GetPreferred2(curr *Ledger, minValidSeq Seq) LedgerID {
 	preferredSeq, preferredID := v.getPreferred(curr)
-	if preferredSeq >= minValidSeq && preferredID != GenesisID {
+	if preferredSeq >= minValidSeq && preferredID != Genesis.ID() {
 		return preferredID
 	}
 	return curr.ID()
@@ -531,7 +531,7 @@ func (v *Validations) GetPreferredLCL(lcl *Ledger, minSeq Seq,
 	peerCounts map[LedgerID]uint32) LedgerID {
 	preferredSeq, preferredID := v.getPreferred(lcl)
 	// Trusted validations exist
-	if preferredID != GenesisID && preferredSeq > 0 {
+	if preferredID != Genesis.ID() && preferredSeq > 0 {
 		if preferredSeq >= minSeq {
 			return preferredID
 		}

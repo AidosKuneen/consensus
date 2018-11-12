@@ -344,7 +344,7 @@ func TestOnStale(t *testing.T) {
 			t.Error("invalid getnodeafter")
 		}
 		s, id = harness.vals.GetPreferred(Genesis)
-		if s != 0 || id != GenesisID {
+		if s != 0 || id != Genesis.ID() {
 			t.Error("invalid getPreferred", s, id)
 		}
 		validationCurrentLocal = b
@@ -690,7 +690,7 @@ func TestGetPreferredLedger(t *testing.T) {
 	acd := newLedger("acd")
 
 	s, lid := harness.vals.GetPreferred(a)
-	if lid != GenesisID || s != 0 {
+	if lid != Genesis.ID() || s != 0 {
 		t.Error("invalid")
 	}
 	if harness.add(na.validate3(b)) != VstatCurrent {
@@ -838,7 +838,7 @@ func TestAcquireValidatedLedger(t *testing.T) {
 	if harness.vals.NumTrustedForLedger(id2) != 1 {
 		t.Error()
 	}
-	if harness.vals.GetNodesAfter(Genesis, GenesisID) != 0 {
+	if harness.vals.GetNodesAfter(Genesis, Genesis.ID()) != 0 {
 		t.Error()
 	}
 	s, lid := harness.vals.GetPreferred(Genesis)
@@ -854,8 +854,8 @@ func TestAcquireValidatedLedger(t *testing.T) {
 		t.Error()
 	}
 	ab := newLedger("ab")
-	if harness.vals.GetNodesAfter(Genesis, GenesisID) != 1 {
-		t.Fatal(harness.vals.GetNodesAfter(Genesis, GenesisID))
+	if harness.vals.GetNodesAfter(Genesis, Genesis.ID()) != 1 {
+		t.Fatal(harness.vals.GetNodesAfter(Genesis, Genesis.ID()))
 	}
 	time.Sleep(5 * time.Second)
 
@@ -964,7 +964,7 @@ func TestTrustChanged(t *testing.T) {
 	}
 	trusted := []*Validation{v}
 	checker := func() {
-		tid := GenesisID
+		tid := Genesis.ID()
 		if len(trusted) > 0 {
 			tid = trusted[0].LedgerID
 		}
@@ -984,7 +984,7 @@ func TestTrustChanged(t *testing.T) {
 		if len(harness.vals.GetCurrentNodeIDs()) != len(listed) {
 			t.Error()
 		}
-		if harness.vals.GetNodesAfter(Genesis, GenesisID) != uint32(len(trusted)) {
+		if harness.vals.GetNodesAfter(Genesis, Genesis.ID()) != uint32(len(trusted)) {
 			t.Error()
 		}
 		if _, lid := harness.vals.GetPreferred(Genesis); lid != tid {
@@ -1052,7 +1052,7 @@ func TestTrustChanged(t *testing.T) {
 	if _, lid := vals.GetPreferred(Genesis); lid != v.LedgerID {
 		t.Error()
 	}
-	if vals.GetNodesAfter(Genesis, GenesisID) != 0 {
+	if vals.GetNodesAfter(Genesis, Genesis.ID()) != 0 {
 		t.Error()
 	}
 	trusted = nil
@@ -1068,7 +1068,7 @@ func TestTrustChanged(t *testing.T) {
 	if len(vals.CurrentTrusted()) != len(trusted) {
 		t.Error()
 	}
-	if vals.GetNodesAfter(Genesis, GenesisID) != 0 {
+	if vals.GetNodesAfter(Genesis, Genesis.ID()) != 0 {
 		t.Error()
 	}
 }

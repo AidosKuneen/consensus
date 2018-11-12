@@ -66,9 +66,6 @@ type ProposalID [32]byte
 //Seq is a sequence no.
 type Seq uint64
 
-//GenesisID is the ID of genesis ledger.
-var GenesisID LedgerID
-
 // TxT is a single transaction
 type TxT interface {
 	ID() TxID

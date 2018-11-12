@@ -88,20 +88,22 @@ var Genesis = &Ledger{
 	Seq:                 0,
 	CloseTimeResolution: LedgerDefaultTimeResolution,
 	CloseTimeAgree:      true,
-	IndexOf: func(s Seq) LedgerID {
+}
+
+func init() {
+	//cannot embed to Genesis construction due to loop reference.
+	Genesis.IndexOf = func(s Seq) LedgerID {
 		if s == 0 {
-			return GenesisID
+			return Genesis.ID()
 		}
 		panic("not found" + strconv.Itoa(int(s)))
-	},
+	}
 }
 
 //ID is the ID of the ledger l.
 func (l *Ledger) ID() LedgerID {
-	if l.Seq == 0 {
-		return GenesisID
-	}
-	if l.id != GenesisID {
+	var zero LedgerID
+	if l.id != zero {
 		return l.id
 	}
 	return LedgerID(sha256.Sum256(l.bytes()))

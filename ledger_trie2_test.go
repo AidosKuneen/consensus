@@ -53,11 +53,11 @@ func TestGetPreferred1(t *testing.T) {
 	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
 	lt := newLedgerTrie()
 	p := lt.getPreferred(0)
-	if p.id != GenesisID {
+	if p.id != Genesis.ID() {
 		t.Error("invalid getpreffered")
 	}
 	p = lt.getPreferred(2)
-	if p.id != GenesisID {
+	if p.id != Genesis.ID() {
 		t.Error("invalid getpreffered")
 	}
 }

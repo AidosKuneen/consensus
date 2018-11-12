@@ -100,7 +100,7 @@ func indexOf(l2 *Ledger) func(s Seq) LedgerID {
 func newLedger(path string) *Ledger {
 	var l *Ledger
 	pre := Genesis
-	ledgers[pre.id] = pre
+	ledgers[pre.ID()] = pre
 
 	for i, p := range path {
 		var id LedgerID

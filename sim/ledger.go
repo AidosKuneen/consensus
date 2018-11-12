@@ -95,7 +95,7 @@ type ledgerOracle struct {
 func newLedgerOracle() *ledgerOracle {
 	return &ledgerOracle{
 		instances: map[consensus.LedgerID]*ledger{
-			consensus.GenesisID: genesis,
+			consensus.Genesis.ID(): genesis,
 		},
 	}
 }
