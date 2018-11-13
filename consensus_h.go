@@ -832,6 +832,7 @@ func (c *Consensus) updateOurPositions() {
 
 		}
 	}
+	log.Println(ourNewSet, consensusCloseTime, c.result.Position.CloseTime, ourCutoff, c.result.Position.Time)
 
 	if ourNewSet == nil &&
 		((consensusCloseTime != c.asCloseTime(c.result.Position.CloseTime)) ||

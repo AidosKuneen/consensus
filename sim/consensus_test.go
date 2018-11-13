@@ -864,3 +864,43 @@ func TestPreferredByBranch(t *testing.T) {
 		expect(t, sim.synchronized(groupNotFastC))
 	}
 }
+
+func TestSlowPeers100(t *testing.T) {
+	// log.SetFlags(log.Ltime | log.Lmicroseconds | log.Llongfile)
+	// Several tests of a complete trust graph with a subset of peers
+	// that have significantly longer network delays to the rest of the
+	// network
+
+	// Test when a slow peer doesn't delay a consensus quorum (4/5 agree)
+	{
+		sim := newSim()
+		fast := sim.createGroup(5)
+		network := fast
+
+		// Fully connected trust graph
+		network.trust(network)
+
+		// Fast and slow network connections
+		fast.connect(
+			fast, consensus.LedgerGranularity/5)
+
+		// All peers submit their own ID as a transaction
+		for _, peer := range network.peers {
+			peer.submit(&tx{
+				id: consensus.TxID(peer.id),
+			})
+		}
+		sim.run(1)
+		log.Println("adding ... ")
+		slow := sim.createGroup(1)
+		network = network.append(slow)
+
+		// Fully connected trust graph
+		network.trust(network)
+
+		// Fast and slow network connections
+		slow.connect(
+			network, consensus.LedgerGranularity/5)
+		sim.run(1)
+	}
+}
