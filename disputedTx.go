@@ -41,7 +41,10 @@
 
 package consensus
 
-import "log"
+import (
+	"encoding/hex"
+	"log"
+)
 
 // DisputedTx is A transaction discovered to be in dispute during conensus.
 // During consensus, a @ref DisputedTx is created when a transaction
@@ -74,20 +77,20 @@ func (dtx *DisputedTx) setVote(peer NodeID, votesYes bool) {
 		// new vote
 		dtx.Votes[peer] = votesYes
 		if votesYes {
-			log.Println("Peer ", peer[:2], " votes YES on ", did[:2])
+			log.Println("Peer ", peer[:2], " votes YES on tx", hex.EncodeToString(did[:])[:4])
 			dtx.Yays++
 		} else {
-			log.Println("Peer ", peer[:2], " votes NO on ", did[:2])
+			log.Println("Peer ", peer[:2], " votes NO on tx", hex.EncodeToString(did[:])[:4])
 			dtx.Nays++
 		}
 	case votesYes && !res:
 		// changes vote to yes
-		log.Println("Peer ", peer[:2], "now votes YES on ", did[:2])
+		log.Println("Peer ", peer[:2], "now votes YES on tx ", hex.EncodeToString(did[:])[:4])
 		dtx.Nays--
 		dtx.Yays++
 		// changes vote to no
 	case !votesYes && res:
-		log.Println("Peer ", peer[:2], "now votes NO on ", did[:2])
+		log.Println("Peer ", peer[:2], "now votes NO on tx", hex.EncodeToString(did[:])[:4])
 		dtx.Nays++
 		dtx.Yays--
 	}
@@ -148,6 +151,6 @@ func (dtx *DisputedTx) updateVote(percentTime int, proposing bool) bool {
 
 	dtx.OurVote = newPosition
 	tid := dtx.Tx.ID()
-	log.Println("We now vote ", dtx.OurVote, " on ", tid[:2])
+	log.Println("We now vote ", dtx.OurVote, " on tx", hex.EncodeToString(tid[:])[:4])
 	return true
 }

@@ -822,6 +822,7 @@ func TestPreferredByBranch(t *testing.T) {
 
 	// Consensus round to generate ledger A
 	sim.run(1)
+	log.Println("*********1")
 	expect(t, sim.synchronized(&sim.allPeers))
 
 	// Next round generates B and C
@@ -836,6 +837,7 @@ func TestPreferredByBranch(t *testing.T) {
 	// The Disruptor will ensure that nodes disconnect before the C
 	// validations make it to all but the fastC node
 	sim.run(1)
+	log.Println("*********2")
 
 	// We are no longer in sync, but have not yet forked:
 	// 9 nodes consider A the last fully validated ledger and fastC sees C
@@ -849,6 +851,7 @@ func TestPreferredByBranch(t *testing.T) {
 		})
 	}
 	sim.run(1)
+	log.Println("*********3")
 
 	// Still not forked
 	expect(t, !sim.synchronized(&sim.allPeers))
@@ -856,6 +859,7 @@ func TestPreferredByBranch(t *testing.T) {
 
 	// Disruptor will reconnect all but the fastC node
 	sim.run(1)
+	log.Println("*********4")
 
 	if expect(t, sim.branches(&sim.allPeers) == 1) {
 		expect(t, sim.synchronized(&sim.allPeers))

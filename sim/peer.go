@@ -365,7 +365,6 @@ func (p *peer) OnClose(prevLedger *consensus.Ledger, closeTime time.Time,
 func (p *peer) OnAccept(result *consensus.Result, prevLedger *consensus.Ledger,
 	closeResolution time.Duration, rawCloseTime *consensus.CloseTimes,
 	mode consensus.Mode) {
-	log.Println("onaccept pid", p.id[0], "txset", result.Position.Position[:2], "prev", prevLedger.ID()[0], "closetime", rawCloseTime)
 	p.schedule(p.processingDelays.ledgerAccept, func() {
 		proposing := mode == consensus.ModeProposing
 		consensusFail := result.State == consensus.StateMovedOn
@@ -377,6 +376,8 @@ func (p *peer) OnAccept(result *consensus.Result, prevLedger *consensus.Ledger,
 			closeResolution,
 			result.Position.CloseTime)
 		p.ledgers[newLedger.ID()] = newLedger.Ledger
+		nid := newLedger.ID()
+		log.Println("onaccept pid", p.id[0], "ledger", nid[:2], "txset", result.Position.Position[:2], "prev", prevLedger.ID()[0], "closetime", rawCloseTime)
 
 		p.issue(&acceptLedger{
 			ledger: newLedger.Ledger,
