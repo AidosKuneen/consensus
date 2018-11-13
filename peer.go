@@ -178,12 +178,12 @@ func param() {
 }
 
 //NewPeer returns a peer object.
-func NewPeer(adaptor PeerInterface, i NodeID, unl []NodeID, runAsValidator bool) *Peer {
+func NewPeer(adaptor PeerInterface, i NodeID, unl []NodeID, runAsValidator bool, lastLedger *Ledger) *Peer {
 	p := &Peer{
 		adaptor:              adaptor,
 		id:                   i,
 		unl:                  unl,
-		lastClosedLedger:     Genesis,
+		lastClosedLedger:     lastLedger,
 		fullyValidatedLedger: Genesis,
 		PeerPositions:        make(map[LedgerID][]*Proposal),
 		runAsValidator:       runAsValidator,

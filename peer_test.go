@@ -181,7 +181,7 @@ func TestPeer(t *testing.T) {
 	var ctxs [4]context.Context
 	var cancels [4]context.CancelFunc
 	for i := range p {
-		p[i] = NewPeer(a[i], nid[i], unl, true)
+		p[i] = NewPeer(a[i], nid[i], unl, true, Genesis)
 		a[i].peer = p[i]
 	}
 	a[0].others = []*adaptor{a[1], a[2], a[3]}
@@ -322,11 +322,11 @@ func TestPeer2(t *testing.T) {
 	defer cancel()
 	var ctxs [4]context.Context
 	var cancels [4]context.CancelFunc
-	p[0] = NewPeer(a[0], nid[0], unl, false)
+	p[0] = NewPeer(a[0], nid[0], unl, false, Genesis)
 	a[0].peer = p[0]
 
 	for i := 1; i < len(p); i++ {
-		p[i] = NewPeer(a[i], nid[i], unl, true)
+		p[i] = NewPeer(a[i], nid[i], unl, true, Genesis)
 		a[i].peer = p[i]
 	}
 	a[0].others = []*adaptor{a[1], a[2], a[3]}
