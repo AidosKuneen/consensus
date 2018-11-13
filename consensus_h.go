@@ -865,7 +865,6 @@ func (c *Consensus) updateOurPositions() {
 				}
 			}
 		}
-		log.Println("!")
 
 		// Share our new position if we are still participating this round
 		if !c.result.Position.isBowOut() &&

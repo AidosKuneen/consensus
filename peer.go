@@ -531,6 +531,7 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 			// we trust ourselves
 			p.addValidation(&v)
 			p.lastValidation = &v
+			p.lastProposal = nil
 		}
 	}
 	// kick off the next round...
