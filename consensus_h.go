@@ -761,6 +761,7 @@ func (c *Consensus) updateOurPositions() {
 			ourNewSet = mutableSet
 		}
 	}
+
 	consensusCloseTime := time.Time{}
 	c.haveCloseTimeConsensus = false
 
@@ -864,10 +865,12 @@ func (c *Consensus) updateOurPositions() {
 				}
 			}
 		}
+		log.Println("!")
 
 		// Share our new position if we are still participating this round
 		if !c.result.Position.isBowOut() &&
 			(c.mode.mode == ModeProposing) {
+			log.Println("proposing")
 			c.adaptor.Propose(c.result.Position)
 		}
 	}

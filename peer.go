@@ -170,6 +170,7 @@ type Peer struct {
 	runAsValidator bool
 
 	lastValidation *Validation
+	lastProposal   *Proposal
 }
 
 func param() {
@@ -267,6 +268,9 @@ func (p *Peer) GetPrevLedger(ledgerID LedgerID, ledger *Ledger, mode Mode) Ledge
 // Propose the position to peers.
 func (p *Peer) Propose(pos *Proposal) {
 	//Adaptor
+	if pos.NodeID == p.id {
+		p.lastProposal = pos
+	}
 	p.adaptor.Propose(pos)
 }
 
@@ -371,6 +375,9 @@ func (p *Peer) Start(ctx context.Context) {
 				p.RLock()
 				if p.lastValidation != nil {
 					p.adaptor.ShareValidaton(p.lastValidation)
+				}
+				if p.lastProposal != nil {
+					p.adaptor.SharePosition(p.lastProposal)
 				}
 				p.RUnlock()
 			}
