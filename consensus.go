@@ -46,6 +46,9 @@ import (
 	"time"
 )
 
+//DoForceToClose is if force to close a propose when others closes them.
+var DoForceToClose = true
+
 /** Determines whether the current ledger should close at this time.
 
   This function should be called when a ledger is open and there is no close
@@ -84,7 +87,7 @@ func shouldCloseLedger(
 		return true
 	}
 
-	if (proposersClosed + proposersValidated) > (prevProposers / 2) {
+	if (proposersClosed+proposersValidated) > (prevProposers/2) && DoForceToClose {
 		// If more than half of the network has closed, we close
 		log.Println("Others have closed")
 		return true
