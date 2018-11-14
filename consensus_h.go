@@ -833,15 +833,12 @@ func (c *Consensus) updateOurPositions() {
 
 		}
 	}
-	log.Println(ourNewSet, consensusCloseTime, c.result.Position.CloseTime, ourCutoff, c.result.Position.Time)
-
 	if ourNewSet == nil &&
 		((consensusCloseTime != c.asCloseTime(c.result.Position.CloseTime)) ||
 			c.result.Position.isStale(ourCutoff)) {
 		// close time changed or our position is stale
 		ourNewSet = c.result.Txns
 	}
-	log.Println(ourNewSet)
 	if ourNewSet != nil {
 		newID := ourNewSet.ID()
 

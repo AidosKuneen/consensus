@@ -396,6 +396,7 @@ func (p *Peer) addValidation(v *Validation) bool {
 	v.Trusted = true
 	v.SeenTime = time.Now()
 	res := p.validations.Add(v.NodeID, v)
+	log.Println("validatoin status:", res)
 
 	if res == VstatStale {
 		return false
