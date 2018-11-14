@@ -893,8 +893,6 @@ func (c *Consensus) haveConsensus() bool {
 			disagree++
 		}
 	}
-	log.Println(c.previousLedger)
-	log.Println(c.prevLedgerID)
 	currentFinished :=
 		c.adaptor.ProposersFinished(c.previousLedger, c.prevLedgerID)
 

@@ -413,9 +413,6 @@ func (p *Peer) startRound() {
 	// Between rounds, we take the majority ledger
 	// In the future, consider taking Peer dominant ledger if no validations
 	// yet
-	id := p.lastClosedLedger.ID()
-	gen := Genesis.ID()
-	log.Println(p.lastClosedLedger.Seq, hex.EncodeToString(id[:]), hex.EncodeToString(gen[:]))
 	bestLCL :=
 		p.validations.GetPreferred2(p.lastClosedLedger, p.earliestAllowedSeq())
 	if bestLCL == Genesis.ID() {
