@@ -99,6 +99,9 @@ func (a *adaptor) OnClose(*Ledger, time.Time, Mode) TxSet {
 func (a *adaptor) ShouldAccept(*Result) bool {
 	return true
 }
+func (a *adaptor) UpdateOurProposal(positions map[NodeID]*Proposal, ourSet TxSet) TxSet {
+	return ourSet
+}
 
 // Called when ledger is accepted by consensus
 func (a *adaptor) OnAccept(l *Ledger) {

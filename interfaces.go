@@ -140,7 +140,11 @@ type Adaptor interface {
 	// Share given transaction set with peers
 	ShareTxset(TxSet)
 
+	//ShouldAccept returns false if we should wait accept
 	ShouldAccept(*Result) bool
+
+	//UpdateOurProposal updates our proposal from otherss proposals
+	UpdateOurProposal(map[NodeID]*Proposal, TxSet) TxSet
 }
 
 type clock interface {

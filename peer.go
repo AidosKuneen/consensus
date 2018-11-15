@@ -95,6 +95,8 @@ type PeerInterface interface {
 	ShareValidaton(*Validation)
 
 	ShouldAccept(*Result) bool
+	//UpdateOurProposal updates our proposal from otherss proposals
+	UpdateOurProposal(map[NodeID]*Proposal, TxSet) TxSet
 }
 
 type realclock struct{}
@@ -538,4 +540,9 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 	// startRound sets the LCL state, so we need to call it once after
 	// the last requested round completes
 	p.startRound()
+}
+
+//UpdateOurProposal updates our proposal from otherss proposals
+func (p *Peer) UpdateOurProposal(positions map[NodeID]*Proposal, ourSet TxSet) TxSet {
+	return p.adaptor.UpdateOurProposal(positions, ourSet)
 }

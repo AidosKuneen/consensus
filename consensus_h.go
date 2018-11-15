@@ -834,12 +834,17 @@ func (c *Consensus) updateOurPositions() {
 
 		}
 	}
+	ourNewSet2 := c.adaptor.UpdateOurProposal(c.currPeerPositions, c.result.Txns)
+	if ourNewSet2.ID() != c.result.Txns.ID() {
+		ourNewSet = ourNewSet2
+	}
 	if ourNewSet == nil &&
 		((consensusCloseTime != c.asCloseTime(c.result.Position.CloseTime)) ||
 			c.result.Position.isStale(ourCutoff)) {
 		// close time changed or our position is stale
 		ourNewSet = c.result.Txns
 	}
+
 	if ourNewSet != nil {
 		newID := ourNewSet.ID()
 
