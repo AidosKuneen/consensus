@@ -724,6 +724,7 @@ func (c *Consensus) updateOurPositions() {
 				// peer's proposal is stale, so remove it
 				peerID := peerProp.NodeID
 				log.Println("Removing stale proposal from ", peerID)
+				log.Println(peerProp.Time, peerCutoff, c.now)
 				for _, dt := range c.result.Disputes {
 					dt.unVote(peerID)
 				}
