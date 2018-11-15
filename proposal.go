@@ -44,6 +44,7 @@ package consensus
 import (
 	"crypto/sha256"
 	"encoding/binary"
+	"log"
 	"time"
 )
 
@@ -131,6 +132,7 @@ func (p *Proposal) changePosition(
 	if p.ProposeSeq != seqLeave {
 		p.ProposeSeq++
 	}
+	log.Println("changed positon", p.Time, p.ProposeSeq)
 }
 
 /** Leave consensus
