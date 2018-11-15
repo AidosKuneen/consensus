@@ -191,7 +191,8 @@ func (c *Consensus) StartRound(now time.Time, prevLedgerID LedgerID, prevLedger 
 	nowUntrusted map[NodeID]struct{}, isProposing bool) {
 	if c.firstRound {
 		// take our initial view of closeTime_ from the seed ledger
-		c.prevRoundTime = ledgerIdleInterval
+		// c.prevRoundTime = ledgerIdleInterval
+		c.prevRoundTime = 2 * prevLedger.CloseTimeResolution
 		c.prevCloseTime = prevLedger.CloseTime
 		c.firstRound = false
 	} else {
