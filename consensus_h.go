@@ -329,7 +329,7 @@ func (c *Consensus) peerProposalInternal(now time.Time, newPeerProp *Proposal) b
 	}
 
 	log.Println("Processing peer proposal seq:", newPeerProp.ProposeSeq,
-		"/ledger ID:", hex.EncodeToString(newPeerProp.Position[:])[:4])
+		"/txset:", hex.EncodeToString(newPeerProp.Position[:])[:4])
 
 	{
 		ait, ok := c.acquired[newPeerProp.Position]
