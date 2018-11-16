@@ -463,9 +463,12 @@ func IndexOfFunc(l *Ledger, acquireLedger func(LedgerID) (*Ledger, error)) func(
 		}
 		var ll *Ledger
 		for ll = l; ll.Seq != s && ll.Seq > 0; {
+			log.Println(ll, ll.Seq)
 			var err error
 			ll, err = acquireLedger(ll.ParentID)
 			if err != nil {
+				id := ll.ID()
+				log.Println("cannot find", hex.EncodeToString(ll.ParentID[:]), hex.EncodeToString(id[:]))
 				panic(err)
 			}
 		}
