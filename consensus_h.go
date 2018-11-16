@@ -842,6 +842,8 @@ func (c *Consensus) updateOurPositions() {
 		nid := ourNewSet2.ID()
 		log.Println("adaptoer changed set from ", hex.EncodeToString(id[:2]), "to", hex.EncodeToString(nid[:2]))
 		ourNewSet = ourNewSet2
+		nid = ourNewSet.ID()
+		log.Println("adaptoer changed set from ", hex.EncodeToString(id[:2]), "to", hex.EncodeToString(nid[:2]))
 	}
 	if ourNewSet == nil &&
 		((consensusCloseTime != c.asCloseTime(c.result.Position.CloseTime)) ||
@@ -851,6 +853,8 @@ func (c *Consensus) updateOurPositions() {
 	}
 
 	if ourNewSet != nil {
+		nid := ourNewSet.ID()
+		log.Println(hex.EncodeToString(nid[:2]))
 		newID := ourNewSet.ID()
 
 		c.result.Txns = ourNewSet
