@@ -176,8 +176,8 @@ type Peer struct {
 }
 
 func param() {
-	// ledgerIdleInterval = 1 * time.Hour
-	// ledgerPrevInterval = 1 * time.Hour
+	ledgerIdleInterval = 1 * time.Hour
+	ledgerPrevInterval = 1 * time.Hour
 }
 
 //NewPeer returns a peer object.
