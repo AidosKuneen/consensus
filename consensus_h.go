@@ -837,12 +837,10 @@ func (c *Consensus) updateOurPositions() {
 		}
 	}
 	ourNewSet2 := c.adaptor.UpdateOurProposal(c.currPeerPositions, c.result.Txns)
-	if ourNewSet2.ID() != c.result.Txns.ID() {
+	if (ourNewSet != nil && ourNewSet2.ID() != ourNewSet.ID()) ||
+		(ourNewSet == nil && ourNewSet2.ID() != c.result.Txns.ID()) {
 		id := c.result.Txns.ID()
 		nid := ourNewSet2.ID()
-		log.Println("adaptoer changed set from ", hex.EncodeToString(id[:2]), "to", hex.EncodeToString(nid[:2]))
-		ourNewSet = ourNewSet2
-		nid = ourNewSet.ID()
 		log.Println("adaptoer changed set from ", hex.EncodeToString(id[:2]), "to", hex.EncodeToString(nid[:2]))
 	}
 	if ourNewSet == nil &&
@@ -853,8 +851,6 @@ func (c *Consensus) updateOurPositions() {
 	}
 
 	if ourNewSet != nil {
-		nid := ourNewSet.ID()
-		log.Println(hex.EncodeToString(nid[:2]))
 		newID := ourNewSet.ID()
 
 		c.result.Txns = ourNewSet
