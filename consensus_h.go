@@ -302,6 +302,7 @@ func (c *Consensus) peerProposalInternal(now time.Time, newPeerProp *Proposal) b
 
 		if ok && newPeerProp.ProposeSeq <=
 			peerPosIt.ProposeSeq {
+			log.Println("seq is old")
 			return false
 		}
 
@@ -798,8 +799,8 @@ func (c *Consensus) updateOurPositions() {
 			c.participantsNeeded(participants, avCTConsensusPCT)
 
 		log.Println("Proposers:", len(c.currPeerPositions),
-			" nw:", neededWeight, " thrV:", threshVote,
-			" thrC:", threshConsensus)
+			",% for propose:", neededWeight, ",# for propose:", threshVote,
+			",# for agreement:", threshConsensus)
 
 		tims := make([]unixTime, 0, len(closeTimeVotes))
 		for tim := range closeTimeVotes {

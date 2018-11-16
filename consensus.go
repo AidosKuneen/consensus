@@ -160,7 +160,7 @@ func checkConsensus(
 	log.Println("checkConsensus: prop=", currentProposers, "/",
 		prevProposers, " agree=", currentAgree,
 		" validated=", currentFinished,
-		" time=", currentAgreeTime, "/",
+		" time=(current/previous)", currentAgreeTime, "/",
 		previousAgreeTime)
 
 	if currentAgreeTime <= ledgerMinConsensus {
