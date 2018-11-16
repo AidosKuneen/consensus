@@ -77,7 +77,7 @@ func shouldCloseLedger(
 	openTime time.Duration, // Time waiting to close this ledger
 	idleInterval time.Duration) bool {
 
-	if (prevRoundTime < -1*time.Second) || (prevRoundTime > ledgerPrevInterval) || (timeSincePrevClose > ledgerPrevInterval) { //maybe should change from original
+	if (prevRoundTime < -1*time.Second) || (prevRoundTime > LedgerPrevInterval) || (timeSincePrevClose > LedgerPrevInterval) { //maybe should change from original
 		log.Println("shouldCloseLedger Trans=",
 			anyTransactions,
 			" Prop: ", prevProposers, "/", proposersClosed,

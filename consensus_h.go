@@ -577,8 +577,8 @@ func (c *Consensus) phaseOpen() {
 		sinceClose = -lastCloseTime.Sub(c.now)
 	}
 	idleInterval := 2 * c.previousLedger.CloseTimeResolution
-	if idleInterval < ledgerIdleInterval {
-		idleInterval = ledgerIdleInterval
+	if idleInterval < LedgerIdleInterval {
+		idleInterval = LedgerIdleInterval
 	}
 	// Decide if we should close the ledger
 	if shouldCloseLedger(
@@ -837,13 +837,11 @@ func (c *Consensus) updateOurPositions() {
 
 		}
 	}
-	ourNewSet2 := c.adaptor.UpdateOurProposal(c.currPeerPositions, c.result.Txns)
-	if (ourNewSet != nil && ourNewSet2.ID() != ourNewSet.ID()) ||
-		(ourNewSet == nil && ourNewSet2.ID() != c.result.Txns.ID()) {
+	ourNewSet = c.adaptor.UpdateOurProposal(c.currPeerPositions, c.result.Txns, ourNewSet)
+	if ourNewSet != nil {
 		id := c.result.Txns.ID()
-		nid := ourNewSet2.ID()
+		nid := ourNewSet.ID()
 		log.Println("adaptoer changed set from ", hex.EncodeToString(id[:2]), "to", hex.EncodeToString(nid[:2]))
-		ourNewSet = ourNewSet2
 	}
 	if ourNewSet == nil &&
 		((consensusCloseTime != c.asCloseTime(c.result.Position.CloseTime)) ||

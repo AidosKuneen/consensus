@@ -66,8 +66,8 @@ var (
 	//! The percentage threshold above which we can declare consensus.
 	minConsensusPCT = 80
 
-	//! The duration a ledger may remain idle before closing
-	ledgerIdleInterval = 15 * time.Second
+	//LedgerIdleInterval is the duration a ledger may remain idle before closing
+	LedgerIdleInterval = 15 * time.Second
 
 	//! The number of seconds we wait minimum to ensure participation
 	ledgerMinConsensus = 1950 * time.Millisecond
@@ -78,7 +78,8 @@ var (
 	//LedgerGranularity determins how often we check state or change positions
 	LedgerGranularity = 1 * time.Second
 
-	ledgerPrevInterval = 10 * time.Minute
+	//LedgerPrevInterval defines interval between ledgers.
+	LedgerPrevInterval = 10 * time.Minute
 
 	/** The minimum amount of time to consider the previous round
 	  to have taken.

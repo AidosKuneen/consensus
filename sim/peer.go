@@ -741,6 +741,6 @@ func (p *peer) injectTxs(prevLedger *consensus.Ledger, src consensus.TxSet) cons
 	return res
 }
 func (p *peer) UpdateOurProposal(positions map[consensus.NodeID]*consensus.Proposal,
-	ourSet consensus.TxSet) consensus.TxSet {
-	return ourSet
+	ourSet, newSet consensus.TxSet) consensus.TxSet {
+	return newSet
 }

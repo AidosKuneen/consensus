@@ -96,7 +96,7 @@ type PeerInterface interface {
 
 	ShouldAccept(*Result) bool
 	//UpdateOurProposal updates our proposal from otherss proposals
-	UpdateOurProposal(map[NodeID]*Proposal, TxSet) TxSet
+	UpdateOurProposal(props map[NodeID]*Proposal, ourSet, newSet TxSet) TxSet
 }
 
 type realclock struct{}
@@ -175,11 +175,6 @@ type Peer struct {
 	lastProposal   *Proposal
 }
 
-func param() {
-	ledgerIdleInterval = 1 * time.Hour
-	ledgerPrevInterval = 1 * time.Hour
-}
-
 //NewPeer returns a peer object.
 func NewPeer(adaptor PeerInterface, i NodeID, unl []NodeID, runAsValidator bool, lastLedger *Ledger) *Peer {
 	p := &Peer{
@@ -191,7 +186,6 @@ func NewPeer(adaptor PeerInterface, i NodeID, unl []NodeID, runAsValidator bool,
 		PeerPositions:        make(map[LedgerID][]*Proposal),
 		runAsValidator:       runAsValidator,
 	}
-	param()
 	c := &realclock{}
 	p.consensus = NewConsensus(c, p)
 	p.validations = NewValidations(&valAdaptor{
@@ -543,6 +537,6 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 }
 
 //UpdateOurProposal updates our proposal from otherss proposals
-func (p *Peer) UpdateOurProposal(positions map[NodeID]*Proposal, ourSet TxSet) TxSet {
-	return p.adaptor.UpdateOurProposal(positions, ourSet)
+func (p *Peer) UpdateOurProposal(positions map[NodeID]*Proposal, ourSet, newSet TxSet) TxSet {
+	return p.adaptor.UpdateOurProposal(positions, ourSet, newSet)
 }

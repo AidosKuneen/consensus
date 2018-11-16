@@ -144,7 +144,7 @@ type Adaptor interface {
 	ShouldAccept(*Result) bool
 
 	//UpdateOurProposal updates our proposal from otherss proposals
-	UpdateOurProposal(map[NodeID]*Proposal, TxSet) TxSet
+	UpdateOurProposal(props map[NodeID]*Proposal, ourSet, newSet TxSet) TxSet
 }
 
 type clock interface {
