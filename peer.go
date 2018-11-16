@@ -76,8 +76,9 @@ type PeerInterface interface {
 	// Called when ledger closes
 	OnClose(*Ledger, time.Time, Mode) TxSet
 
-	// Called when ledger is accepted by consensus
-	OnAccept(*Ledger)
+	// Called when ledger is accepted by consensus with fully validaded ledger
+	// (not accepted ledger)
+	OnAccept(fullyValidatedLedger *Ledger)
 
 	// Propose the position to Peers.
 	Propose(*Proposal)
@@ -368,14 +369,13 @@ func (p *Peer) Start(ctx context.Context) {
 			case <-ctx2.Done():
 				return
 			case <-time.After(resendValidationWaitTime):
-				p.RLock()
+				p.Lock()
 				if p.lastValidation != nil {
+					p.lastValidation.SeenTime = time.Now()
+					p.lastValidation.SignTime = time.Now()
 					p.adaptor.ShareValidaton(p.lastValidation)
 				}
-				if p.lastProposal != nil {
-					p.adaptor.SharePosition(p.lastProposal)
-				}
-				p.RUnlock()
+				p.Unlock()
 			}
 		}
 	}()
@@ -491,7 +491,7 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 		newLedger.CloseTime = prevLedger.CloseTime.Add(time.Second)
 	}
 	p.checkFullyValidated(newLedger)
-	p.adaptor.OnAccept(newLedger)
+	p.adaptor.OnAccept(p.fullyValidatedLedger)
 
 	nid := newLedger.ID()
 	pid := prevLedger.ID()
