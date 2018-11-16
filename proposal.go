@@ -156,6 +156,6 @@ func (p *Proposal) bytes() []byte {
 	binary.LittleEndian.PutUint32(bs[32+32:], uint32(p.CloseTime.Unix()))
 	binary.LittleEndian.PutUint32(bs[32+32+4:], uint32(p.Time.Unix()))
 	binary.LittleEndian.PutUint64(bs[32+32+4+4:], uint64(p.ProposeSeq))
-	copy(bs[32+4+4+8:], p.NodeID[:])
+	copy(bs[32+32+4+4+8:], p.NodeID[:])
 	return bs
 }
