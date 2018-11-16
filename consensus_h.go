@@ -828,7 +828,8 @@ func (c *Consensus) updateOurPositions() {
 			" Proposers:", len(c.currPeerPositions),
 			" Mode:", c.mode.mode,
 			" Thresh:", threshConsensus,
-			" Pos:", consensusCloseTime)
+			" Pos:", consensusCloseTime,
+			" Reso", c.closeResolution)
 		if !c.haveCloseTimeConsensus {
 			log.Println("No CT consensus:")
 		} else {
