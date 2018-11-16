@@ -78,7 +78,7 @@ type PeerInterface interface {
 
 	// Called when ledger is accepted by consensus with fully validaded ledger
 	// (not accepted ledger)
-	OnAccept(fullyValidatedLedger *Ledger)
+	OnAccept(newledger, fullyValidatedLedger *Ledger)
 
 	// Propose the position to Peers.
 	Propose(*Proposal)
@@ -491,7 +491,7 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 		newLedger.CloseTime = prevLedger.CloseTime.Add(time.Second)
 	}
 	p.checkFullyValidated(newLedger)
-	p.adaptor.OnAccept(p.fullyValidatedLedger)
+	p.adaptor.OnAccept(newLedger, p.fullyValidatedLedger)
 
 	nid := newLedger.ID()
 	pid := prevLedger.ID()

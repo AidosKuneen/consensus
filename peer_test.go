@@ -104,7 +104,7 @@ func (a *adaptor) UpdateOurProposal(positions map[NodeID]*Proposal, ourSet, newS
 }
 
 // Called when ledger is accepted by consensus
-func (a *adaptor) OnAccept(l *Ledger) {
+func (a *adaptor) OnAccept(l, fully *Ledger) {
 	log.Println("onaccept")
 	mutex.Lock()
 	ledgers2[l.ID()] = l.Clone()
