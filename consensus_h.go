@@ -842,6 +842,7 @@ func (c *Consensus) updateOurPositions() {
 		id := c.result.Txns.ID()
 		nid := ourNewSet2.ID()
 		log.Println("adaptoer changed set from ", hex.EncodeToString(id[:2]), "to", hex.EncodeToString(nid[:2]))
+		ourNewSet = ourNewSet2
 	}
 	if ourNewSet == nil &&
 		((consensusCloseTime != c.asCloseTime(c.result.Position.CloseTime)) ||
