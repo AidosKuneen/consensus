@@ -42,7 +42,6 @@
 package consensus
 
 import (
-	"encoding/hex"
 	"log"
 )
 
@@ -77,20 +76,20 @@ func (dtx *DisputedTx) setVote(peer NodeID, votesYes bool) {
 		// new vote
 		dtx.Votes[peer] = votesYes
 		if votesYes {
-			log.Println("Peer ", peer[:2], " votes YES on tx", hex.EncodeToString(did[:])[:4])
+			log.Printf("Peer %x votes YES on tx %x\n", peer[:4], did[:4])
 			dtx.Yays++
 		} else {
-			log.Println("Peer ", peer[:2], " votes NO on tx", hex.EncodeToString(did[:])[:4])
+			log.Printf("Peer %x votes NO on tx %x\n", peer[:4], did[:4])
 			dtx.Nays++
 		}
 	case votesYes && !res:
 		// changes vote to yes
-		log.Println("Peer ", peer[:2], "now votes YES on tx ", hex.EncodeToString(did[:])[:4])
+		log.Printf("Peer %x votes YES on tx %x\n", peer[:4], did[:4])
 		dtx.Nays--
 		dtx.Yays++
 		// changes vote to no
 	case !votesYes && res:
-		log.Println("Peer ", peer[:2], "now votes NO on tx", hex.EncodeToString(did[:])[:4])
+		log.Printf("Peer %x votes NO on tx %x\n", peer[:4], did[:4])
 		dtx.Nays++
 		dtx.Yays--
 	}
@@ -145,12 +144,12 @@ func (dtx *DisputedTx) updateVote(percentTime int, proposing bool) bool {
 	}
 
 	if newPosition == dtx.OurVote {
-		log.Println("No change (", dtx.OurVote, ") : weight ", weight, ", percent ", percentTime)
+		// log.Println("No change (", dtx.OurVote, ") : weight ", weight, ", percent ", percentTime)
 		return false
 	}
 
 	dtx.OurVote = newPosition
-	tid := dtx.Tx.ID()
-	log.Println("We now vote ", dtx.OurVote, " on tx", hex.EncodeToString(tid[:])[:4])
+	// tid := dtx.Tx.ID()
+	// log.Println("We now vote ", dtx.OurVote, " on tx", hex.EncodeToString(tid[:])[:4])
 	return true
 }

@@ -255,8 +255,8 @@ func (p *Peer) GetPrevLedger(ledgerID LedgerID, ledger *Ledger, mode Mode) Ledge
 
 	netLgr := p.validations.GetPreferred2(ledger, p.earliestAllowedSeq())
 	if netLgr != ledgerID {
-		log.Println("Now we are having wrong latest ledger", hex.EncodeToString(ledgerID[:])[:4])
-		log.Println("Most prefferd is", hex.EncodeToString(netLgr[:])[:4])
+		log.Println("Now we are having wrong latest ledger", hex.EncodeToString(ledgerID[:4]))
+		log.Println("Most prefferd is", hex.EncodeToString(netLgr[:4]))
 	}
 
 	return netLgr
@@ -415,7 +415,7 @@ func (p *Peer) startRound() {
 		bestLCL = p.lastClosedLedger.ID()
 	}
 	pid := p.lastClosedLedger.ID()
-	log.Println("starting a round", "best ledger", hex.EncodeToString(bestLCL[:])[:4], "prevLedger", hex.EncodeToString(pid[:])[:4])
+	log.Println("starting a round", "best ledger", hex.EncodeToString(bestLCL[:4]), "prevLedger", hex.EncodeToString(pid[:4]))
 	// Not yet modeling dynamic UNL.
 	nowUntrusted := make(map[NodeID]struct{})
 	p.consensus.StartRound(
@@ -440,7 +440,7 @@ func (p *Peer) OnClose(prevLedger *Ledger, closeTime time.Time, mode Mode) *Resu
 	txns := p.adaptor.OnClose(prevLedger, closeTime, mode)
 	id := txns.ID()
 	pid := prevLedger.ID()
-	log.Println("closing prevledger", hex.EncodeToString(pid[:])[:4], "txnsid", hex.EncodeToString(id[:])[:4], "time", closeTime)
+	log.Println("closing prevledger", hex.EncodeToString(pid[:4]), "txnsid", hex.EncodeToString(id[:4]), "time", closeTime)
 	return NewResult(txns,
 		&Proposal{
 			PreviousLedger: prevLedger.ID(),
@@ -495,8 +495,8 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 
 	nid := newLedger.ID()
 	pid := prevLedger.ID()
-	log.Println("onaccept txset", hex.EncodeToString(result.Position.Position[:])[:4], "prev ledger", hex.EncodeToString(pid[:])[:4],
-		"closetime", rawCloseTime.Self, "new ledger", hex.EncodeToString(nid[:])[:4], "seq", newLedger.Seq)
+	log.Println("onaccept txset", hex.EncodeToString(result.Position.Position[:4]), "prev ledger", hex.EncodeToString(pid[:4]),
+		"closetime", rawCloseTime.Self, "new ledger", hex.EncodeToString(nid[:4]), "seq", newLedger.Seq)
 	log.Println("proposers", result.Proposers, "round time", result.RoundTime.Dur)
 	p.PeerPositions = make(map[LedgerID][]*Proposal)
 	p.lastClosedLedger = newLedger

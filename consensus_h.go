@@ -285,11 +285,11 @@ func (c *Consensus) peerProposalInternal(now time.Time, newPeerProp *Proposal) b
 
 	if newPeerProp.PreviousLedger != c.prevLedgerID {
 		log.Println("Got proposal (previous ledger)", hex.EncodeToString(newPeerProp.PreviousLedger[:])[:4],
-			"from peer", peerID[:2], "but we are on (prevous ledger)", hex.EncodeToString(c.prevLedgerID[:])[:4])
+			"from peer", hex.EncodeToString(peerID[:4]), "but we are on (prevous ledger)", hex.EncodeToString(c.prevLedgerID[:4]))
 		return false
 	}
 	log.Println("Got proposal (previous ledger)", hex.EncodeToString(newPeerProp.PreviousLedger[:])[:4],
-		"from peer", peerID[:2], "and we are on (prevous ledger)", hex.EncodeToString(c.prevLedgerID[:])[:4])
+		"from peer", hex.EncodeToString(peerID[:4]), "and we are on (prevous ledger)", hex.EncodeToString(c.prevLedgerID[:4]))
 
 	if _, ok := c.deadNodes[peerID]; ok {
 		log.Println("Position from dead node: ", peerID)
@@ -331,7 +331,7 @@ func (c *Consensus) peerProposalInternal(now time.Time, newPeerProp *Proposal) b
 	}
 
 	log.Println("Processing peer proposal seq:", newPeerProp.ProposeSeq,
-		"/txset:", hex.EncodeToString(newPeerProp.Position[:])[:4])
+		"/txset:", hex.EncodeToString(newPeerProp.Position[:4]))
 
 	{
 		ait, ok := c.acquired[newPeerProp.Position]
@@ -342,7 +342,7 @@ func (c *Consensus) peerProposalInternal(now time.Time, newPeerProp *Proposal) b
 			if set, err := c.adaptor.AcquireTxSet(newPeerProp.Position); err == nil {
 				c.GotTxSet(c.now, set)
 			} else {
-				log.Println("Don't have tx set for peer, txset:", hex.EncodeToString(newPeerProp.Position[:])[:4])
+				log.Println("Don't have tx set for peer, txset:", hex.EncodeToString(newPeerProp.Position[:4]))
 			}
 			return true
 		}
@@ -841,7 +841,7 @@ func (c *Consensus) updateOurPositions() {
 	if ourNewSet != nil {
 		id := c.result.Txns.ID()
 		nid := ourNewSet.ID()
-		log.Println("adaptoer changed set from ", hex.EncodeToString(id[:2]), "to", hex.EncodeToString(nid[:2]))
+		log.Println("adaptoer changed set from ", hex.EncodeToString(id[:4]), "to", hex.EncodeToString(nid[:4]))
 	}
 	if ourNewSet == nil &&
 		((consensusCloseTime != c.asCloseTime(c.result.Position.CloseTime)) ||
@@ -856,7 +856,7 @@ func (c *Consensus) updateOurPositions() {
 		c.result.Txns = ourNewSet
 
 		log.Println("Position change: CTime ",
-			consensusCloseTime, ", txset ", hex.EncodeToString(newID[:])[:4])
+			consensusCloseTime, ", txset ", hex.EncodeToString(newID[:4]))
 
 		c.result.Position.changePosition(newID, consensusCloseTime, c.now)
 
@@ -900,7 +900,7 @@ func (c *Consensus) haveConsensus() bool {
 		if peerProp.Position == ourPosition {
 			agree++
 		} else {
-			log.Println(nid[:2], " has tx", hex.EncodeToString(peerProp.Position[:])[:4])
+			log.Println(hex.EncodeToString(nid[:4]), " has tx", hex.EncodeToString(peerProp.Position[:4]))
 			disagree++
 		}
 	}
@@ -964,9 +964,6 @@ func (c *Consensus) createDisputes(o TxSet) {
 	if c.result.Txns.ID() == o.ID() {
 		return
 	}
-	txnsid := c.result.Txns.ID()
-	oid := o.ID()
-	log.Println("createDisputes txset", hex.EncodeToString(txnsid[:])[:4], " to ", hex.EncodeToString(oid[:])[:4])
 
 	differences := c.result.Txns.compare(o)
 
@@ -997,7 +994,7 @@ func (c *Consensus) createDisputes(o TxSet) {
 			continue
 		}
 
-		log.Println("Transaction txid", hex.EncodeToString(txID[:])[:4], " is disputed")
+		// log.Println("Transaction txid", hex.EncodeToString(txID[:])[:4], " is disputed")
 
 		num := c.prevProposers
 		if num < uint(len(c.currPeerPositions)) {
@@ -1017,7 +1014,7 @@ func (c *Consensus) createDisputes(o TxSet) {
 		c.adaptor.ShareTx(dtx.Tx)
 		c.result.Disputes[txID] = dtx
 	}
-	log.Println(dc, " differences found")
+	// log.Println(dc, " differences found")
 }
 
 // Update our disputes given that this node has adopted a new position.
