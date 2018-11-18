@@ -514,7 +514,9 @@ func (v *Validations) getPreferred(curr *Ledger) (Seq, LedgerID) {
 //   @return ID Of the preferred ledger, or curr if the preferred ledger is not valid
 func (v *Validations) GetPreferred2(curr *Ledger, minValidSeq Seq) LedgerID {
 	preferredSeq, preferredID := v.getPreferred(curr)
-	log.Println("prefseq,id", preferredSeq, hex.EncodeToString(preferredID[:]))
+	ciur := curr.ID()
+	log.Println("prefseq,id,min,cur", preferredSeq, hex.EncodeToString(preferredID[:]), minValidSeq,
+		hex.EncodeToString(ciur[:]))
 	for _, c := range v.current {
 		log.Println(hex.EncodeToString(c.LedgerID[:]))
 	}
