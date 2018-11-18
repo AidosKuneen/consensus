@@ -45,6 +45,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"sort"
 )
 
@@ -597,7 +598,7 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) *spanTip {
 	uncommittedIt := lt.keys()
 	var uncommited uint32
 	it := 0
-
+	log.Println(curr.Span.tip().ledger.ID())
 	for curr != nil && !done {
 		// Within a single Span, the preferred by branch strategy is simply
 		// to continue along the Span as long as the branch support of

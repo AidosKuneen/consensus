@@ -228,6 +228,7 @@ func (v *Validations) checkAcquired() {
 		_, lid := fromSeqLedgerID(sli)
 		l, err := v.Adaptor.AcquireLedger(lid)
 		if err != nil {
+			log.Println("not found", lid)
 			continue
 		}
 		for nid := range m {
@@ -463,7 +464,7 @@ func (v *Validations) getPreferred(curr *Ledger) (Seq, LedgerID) {
 	v.withTrie(func(trie *ledgerTrie) {
 		preferred = trie.getPreferred(v.localSeqEnforcer.largest)
 	})
-
+	log.Println(preferred.seq, curr.Seq, curr.ID())
 	// No trusted validations to determine branch
 	if preferred.seq == 0 {
 		// fall back to majority over acquiring ledgers

@@ -41,21 +41,40 @@
 
 package consensus
 
-import "time"
+import (
+	"encoding/hex"
+	"time"
+)
 
 type unixTime int64
 
 //NodeID is a id for a node.
 type NodeID [32]byte
 
+func (nid NodeID) String() string {
+	return hex.EncodeToString(nid[:])
+}
+
 //TxID is a id for a tx.
 type TxID [32]byte
+
+func (tid TxID) String() string {
+	return hex.EncodeToString(tid[:])
+}
 
 //TxSetID is a id for a txset.
 type TxSetID [32]byte
 
+func (tsid TxSetID) String() string {
+	return hex.EncodeToString(tsid[:])
+}
+
 //LedgerID is a id for a ledger.
 type LedgerID [32]byte
+
+func (lid LedgerID) String() string {
+	return hex.EncodeToString(lid[:])
+}
 
 //ValidationID is a id for a ledger.
 type ValidationID [32]byte
