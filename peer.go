@@ -254,6 +254,8 @@ func (p *Peer) GetPrevLedger(ledgerID LedgerID, ledger *Ledger, mode Mode) Ledge
 	}
 
 	netLgr := p.validations.GetPreferred2(ledger, p.earliestAllowedSeq())
+	lid := ledger.ID()
+	log.Println("prevledger ledger", hex.EncodeToString(lid[:]), "earliesg", p.earliestAllowedSeq(), "netlgr", hex.EncodeToString(netLgr[:]))
 	if netLgr != ledgerID {
 		log.Println("Now we are having wrong latest ledger", hex.EncodeToString(ledgerID[:4]))
 		log.Println("Most prefferd is", hex.EncodeToString(netLgr[:4]))

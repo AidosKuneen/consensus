@@ -501,7 +501,7 @@ func (c *Consensus) handleWrongLedger(lgrID LedgerID) {
 	// we need to switch the ledger we're working from
 	newLedger, err := c.adaptor.AcquireLedger(c.prevLedgerID)
 	if err == nil {
-		log.Println("Have the consensus ledger ", c.prevLedgerID)
+		log.Println("Have the consensus ledger ", hex.EncodeToString(c.prevLedgerID[:]))
 		c.startRoundInternal(
 			c.now, lgrID, newLedger, ModeSwitchedLedger)
 		return
