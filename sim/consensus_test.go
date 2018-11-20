@@ -428,7 +428,7 @@ func TestWrongLCL1(t *testing.T) {
 							peerJumps.closeJumps[0]
 						// Jump is to a different chain
 						expect(t, jump.from.Seq <= jump.to.Seq)
-						expect(t, !jump.to.IsAncestor(jump.from))
+						expect(t, !jump.to.IsDescendantOf(jump.from))
 					}
 				}
 				// fully validated jump forward in same chain
@@ -441,7 +441,7 @@ func TestWrongLCL1(t *testing.T) {
 							peerJumps.fullyValidatedJumps[0]
 						// Jump is to a different chain with same seq
 						expect(t, jump.from.Seq < jump.to.Seq)
-						expect(t, jump.to.IsAncestor(jump.from))
+						expect(t, jump.to.IsDescendantOf(jump.from))
 					}
 				}
 			}

@@ -139,7 +139,6 @@ func (dtx *DisputedTx) updateVote(percentTime int, proposing bool) bool {
 		}
 	} else {
 		// don't let us outweigh a proposing node, just recognize consensus
-		weight = -1
 		newPosition = dtx.Yays > dtx.Nays
 	}
 

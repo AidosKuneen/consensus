@@ -128,8 +128,8 @@ func (l *Ledger) bytes() []byte {
 	return bs
 }
 
-//IsAncestor returns true if a is an ancestor of l.
-func (l *Ledger) IsAncestor(a *Ledger) bool {
+//IsDescendantOf returns true if a is an ancestor of l.
+func (l *Ledger) IsDescendantOf(a *Ledger) bool {
 	if a.Seq < l.Seq {
 		return l.IndexOf(a.Seq) == a.ID()
 	}

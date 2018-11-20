@@ -164,7 +164,7 @@ func (l *ledgerOracle) branches(ledgers []*consensus.Ledger) int {
 			if !idxEarlier {
 				earlier, later = later, earlier
 			}
-			if later.IsAncestor(earlier) {
+			if later.IsDescendantOf(earlier) {
 				tips[idx] = later
 				found = true
 			}

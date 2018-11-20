@@ -432,7 +432,7 @@ func (p *Peer) checkFullyValidated(ledger *Ledger) {
 	}
 	count := p.validations.NumTrustedForLedger(ledger.ID())
 	quorum := int(math.Ceil(float64(len(p.unl)) * 0.8))
-	if count >= uint(quorum) && ledger.IsAncestor(p.fullyValidatedLedger) {
+	if count >= uint(quorum) && ledger.IsDescendantOf(p.fullyValidatedLedger) {
 		p.fullyValidatedLedger = ledger
 	}
 }
@@ -505,7 +505,7 @@ func (p *Peer) OnAccept(result *Result, prevLedger *Ledger,
 
 	// Only send validation if the new ledger is compatible with our
 	// fully validated ledger
-	isCompatible := newLedger.IsAncestor(p.fullyValidatedLedger)
+	isCompatible := newLedger.IsDescendantOf(p.fullyValidatedLedger)
 
 	// Can only send one validated ledger per seq
 	consensusFail := result.State == StateMovedOn
