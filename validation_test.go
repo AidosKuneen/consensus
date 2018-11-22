@@ -960,7 +960,7 @@ func TestTrustChanged(t *testing.T) {
 		t.Error()
 	}
 	listed := map[NodeID]struct{}{
-		na.nodeID: struct{}{},
+		na.nodeID: {},
 	}
 	trusted := []*Validation{v}
 	checker := func() {
@@ -1002,7 +1002,7 @@ func TestTrustChanged(t *testing.T) {
 	checker()
 	trusted = nil
 	harness.vals.TrustChanged(nil, map[NodeID]struct{}{
-		na.nodeID: struct{}{},
+		na.nodeID: {},
 	})
 	checker()
 
@@ -1015,14 +1015,14 @@ func TestTrustChanged(t *testing.T) {
 		t.Error()
 	}
 	listed = map[NodeID]struct{}{
-		na.nodeID: struct{}{},
+		na.nodeID: {},
 	}
 	trusted = nil
 	checker()
 
 	trusted = append(trusted, v)
 	harness.vals.TrustChanged(map[NodeID]struct{}{
-		na.nodeID: struct{}{},
+		na.nodeID: {},
 	}, nil)
 	checker()
 
@@ -1037,7 +1037,7 @@ func TestTrustChanged(t *testing.T) {
 		t.Error()
 	}
 	listed = map[NodeID]struct{}{
-		na.nodeID: struct{}{},
+		na.nodeID: {},
 	}
 	trusted = []*Validation{v}
 	vals := harness.vals
@@ -1057,7 +1057,7 @@ func TestTrustChanged(t *testing.T) {
 	}
 	trusted = nil
 	vals.TrustChanged(nil, map[NodeID]struct{}{
-		na.nodeID: struct{}{},
+		na.nodeID: {},
 	})
 	newLedger("ab")
 	for i, v := range vals.CurrentTrusted() {

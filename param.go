@@ -75,7 +75,7 @@ var (
 	//! Minimum number of seconds to wait to ensure others have computed the LCL
 	ledgerMinClose = 2 * time.Second
 
-	//LedgerGranularity determins how often we check state or change positions
+	//LedgerGranularity determines how often we check state or change positions
 	LedgerGranularity = 1 * time.Second
 
 	//LedgerPrevInterval defines interval between ledgers.

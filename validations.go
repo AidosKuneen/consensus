@@ -293,7 +293,7 @@ func (v *Validations) updateTrie3(nodeID NodeID, val *Validation) {
 	} else {
 		if v.acquiring[slid] == nil {
 			v.acquiring[slid] = map[NodeID]struct{}{
-				nodeID: struct{}{},
+				nodeID: {},
 			}
 		} else {
 			v.acquiring[slid][nodeID] = struct{}{}

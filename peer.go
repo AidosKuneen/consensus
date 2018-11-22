@@ -230,7 +230,7 @@ func (p *Peer) HasOpenTransactions() bool {
 // ProposersValidated is the number of proposers that have validated the given ledger
 func (p *Peer) ProposersValidated(prevLedger LedgerID) uint {
 	//Adaptor
-	//This funcs is used for determing if the node closes right now.
+	//This funcs is used for determining if the node closes right now.
 	//But it causes consensus too fast, so for now we prevent radically faster consensus.
 	return 0
 	// return p.validations.NumTrustedForLedger(prevLedger)

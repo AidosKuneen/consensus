@@ -132,7 +132,7 @@ func (p *Proposal) changePosition(
 	if p.ProposeSeq != seqLeave {
 		p.ProposeSeq++
 	}
-	log.Println("changed positon", p.Time, p.ProposeSeq)
+	log.Println("changed position", p.Time, p.ProposeSeq)
 }
 
 /** Leave consensus

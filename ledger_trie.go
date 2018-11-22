@@ -596,7 +596,7 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) *spanTip {
 	curr := lt.root
 	done := false
 	uncommittedIt := lt.keys()
-	var uncommited uint32
+	var uncommitted uint32
 	it := 0
 	for curr != nil && !done {
 		log.Println(curr.Span.tip().ledger.ID())
@@ -612,16 +612,16 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) *spanTip {
 				maxSeq = largestIssued
 			}
 			for ; it < len(uncommittedIt) && uncommittedIt[it] < maxSeq; it++ {
-				uncommited += lt.seqSupport[uncommittedIt[it]]
+				uncommitted += lt.seqSupport[uncommittedIt[it]]
 			}
 			// Advance nextSeq along the Span
 			for nextSeq < curr.Span.end &&
-				curr.branchSupport > uncommited {
+				curr.branchSupport > uncommitted {
 				// Jump to the next seqSupport change
 				if it != len(uncommittedIt) &&
 					uncommittedIt[it] < curr.Span.end {
 					nextSeq = uncommittedIt[it] + 1
-					uncommited += lt.seqSupport[uncommittedIt[it]]
+					uncommitted += lt.seqSupport[uncommittedIt[it]]
 					it++
 				} else { // otherwise we jump to the end of the Span
 					nextSeq = curr.Span.end
@@ -676,7 +676,7 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) *spanTip {
 
 		// If the best child has margin exceeding the uncommitted support,
 		// continue from that child, otherwise we are done
-		if best != nil && ((margin > uncommited) || (uncommited == 0)) {
+		if best != nil && ((margin > uncommitted) || (uncommitted == 0)) {
 			curr = best
 		} else { // current is the best
 			done = true
