@@ -45,12 +45,10 @@ import (
 	"time"
 )
 
-/**  Possible ledger close time resolutions.
-
-  Values should not be duplicated.
-  @see getNextLedgerTimeResolution
-*/
-var ledgerPossibleTimeResolutions = []time.Duration{
+//LedgerPossibleTimeResolutions is the Possible ledger close time resolutions.
+//  Values should not be duplicated.
+//  @see getNextLedgerTimeResolution
+var LedgerPossibleTimeResolutions = []time.Duration{
 	10 * time.Second,
 	20 * time.Second,
 	30 * time.Second,
@@ -60,7 +58,7 @@ var ledgerPossibleTimeResolutions = []time.Duration{
 }
 
 // LedgerDefaultTimeResolution is the initial resolution of ledger close time.
-var LedgerDefaultTimeResolution = ledgerPossibleTimeResolutions[2]
+var LedgerDefaultTimeResolution = LedgerPossibleTimeResolutions[2]
 
 const (
 	//! How often we increase the close time resolution (in numbers of ledgers)
@@ -105,12 +103,12 @@ func getNextLedgerTimeResolution(
 
 	// Find the current resolution:
 	iter := 0
-	for iter = 0; iter < len(ledgerPossibleTimeResolutions); iter++ {
-		if ledgerPossibleTimeResolutions[iter] == previousResolution {
+	for iter = 0; iter < len(LedgerPossibleTimeResolutions); iter++ {
+		if LedgerPossibleTimeResolutions[iter] == previousResolution {
 			break
 		}
 	}
-	if iter == len(ledgerPossibleTimeResolutions) {
+	if iter == len(LedgerPossibleTimeResolutions) {
 		panic("invalid resolution")
 	}
 
@@ -118,8 +116,8 @@ func getNextLedgerTimeResolution(
 	// improve the chance that we will agree now.
 	if !previousAgree &&
 		ledgerSeq%decreaseLedgerTimeResolutionEvery == 0 {
-		if iter++; iter != len(ledgerPossibleTimeResolutions) {
-			return ledgerPossibleTimeResolutions[iter]
+		if iter++; iter != len(LedgerPossibleTimeResolutions) {
+			return LedgerPossibleTimeResolutions[iter]
 		}
 	}
 
@@ -128,7 +126,7 @@ func getNextLedgerTimeResolution(
 	if previousAgree &&
 		ledgerSeq%increaseLedgerTimeResolutionEvery == 0 {
 		if iter--; iter >= 0 {
-			return ledgerPossibleTimeResolutions[iter]
+			return LedgerPossibleTimeResolutions[iter]
 		}
 	}
 	return previousResolution
