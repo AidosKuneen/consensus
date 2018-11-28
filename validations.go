@@ -464,7 +464,6 @@ func (v *Validations) getPreferred(curr *Ledger) (Seq, LedgerID) {
 	v.withTrie(func(trie *ledgerTrie) {
 		preferred = trie.getPreferred(v.localSeqEnforcer.largest)
 	})
-	log.Println(preferred.seq, curr.Seq, curr.ID())
 	// No trusted validations to determine branch
 	if preferred.seq == 0 {
 		// fall back to majority over acquiring ledgers
@@ -518,9 +517,6 @@ func (v *Validations) GetPreferred2(curr *Ledger, minValidSeq Seq) LedgerID {
 	ciur := curr.ID()
 	log.Println("prefseq,id,min,cur", preferredSeq, hex.EncodeToString(preferredID[:]), minValidSeq,
 		hex.EncodeToString(ciur[:]))
-	for _, c := range v.current {
-		log.Println(hex.EncodeToString(c.LedgerID[:]))
-	}
 	if preferredSeq >= minValidSeq && preferredID != Genesis.ID() {
 		return preferredID
 	}
