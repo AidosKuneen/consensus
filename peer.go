@@ -434,6 +434,7 @@ func (p *Peer) checkFullyValidated(ledger *Ledger) {
 	count := p.validations.NumTrustedForLedger(ledger.ID())
 	quorum := int(math.Ceil(float64(len(p.unl)+1) * 0.8))
 	if count >= uint(quorum) && ledger.IsDescendantOf(p.fullyValidatedLedger) {
+		log.Println("fully validated", ledger.ID())
 		p.fullyValidatedLedger = ledger
 	}
 }
