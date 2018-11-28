@@ -417,7 +417,10 @@ func (p *Peer) startRound() {
 		bestLCL = p.lastClosedLedger.ID()
 	}
 	pid := p.lastClosedLedger.ID()
-	log.Println("starting a round", "best ledger", hex.EncodeToString(bestLCL[:4]), "prevLedger", hex.EncodeToString(pid[:4]))
+	log.Println("Starting a round")
+	log.Println("\tbest ledger", bestLCL)
+	log.Println("\tprevLedger", pid)
+	log.Println("\tfully validated", p.fullyValidatedLedger.ID())
 	// Not yet modeling dynamic UNL.
 	nowUntrusted := make(map[NodeID]struct{})
 	p.consensus.StartRound(

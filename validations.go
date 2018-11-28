@@ -43,7 +43,6 @@ package consensus
 
 import (
 	"bytes"
-	"encoding/hex"
 	"log"
 	"time"
 )
@@ -514,9 +513,6 @@ func (v *Validations) getPreferred(curr *Ledger) (Seq, LedgerID) {
 //   @return ID Of the preferred ledger, or curr if the preferred ledger is not valid
 func (v *Validations) GetPreferred2(curr *Ledger, minValidSeq Seq) LedgerID {
 	preferredSeq, preferredID := v.getPreferred(curr)
-	ciur := curr.ID()
-	log.Println("prefseq,id,min,cur", preferredSeq, hex.EncodeToString(preferredID[:]), minValidSeq,
-		hex.EncodeToString(ciur[:]))
 	if preferredSeq >= minValidSeq && preferredID != Genesis.ID() {
 		return preferredID
 	}
