@@ -45,7 +45,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"sort"
 )
 
@@ -599,7 +598,6 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) *spanTip {
 	var uncommitted uint32
 	it := 0
 	for curr != nil && !done {
-		log.Println(curr.Span.tip().ledger.ID())
 		// Within a single Span, the preferred by branch strategy is simply
 		// to continue along the Span as long as the branch support of
 		// the next ledger exceeds the uncommitted support for that ledger.
@@ -637,7 +635,6 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) *spanTip {
 				return sp.tip()
 			}
 		}
-		log.Println(curr.Span.tip().ledger.ID())
 
 		// We have reached the end of the current Span, so we need to
 		// find the best child
@@ -656,12 +653,10 @@ func (lt *ledgerTrie) getPreferred(largestIssued Seq) *spanTip {
 				}
 				idi := curr.children[i].Span.startID()
 				idj := curr.children[j].Span.startID()
-				log.Println(idi, idj)
 
 				return bytes.Compare(idi[:], idj[:]) > 0
 			})
 			best = curr.children[0]
-			log.Println(best.Span.tip().ledger.ID())
 			margin = curr.children[0].branchSupport -
 				curr.children[1].branchSupport
 			// If best holds the tie-breaker, gets one larger margin
